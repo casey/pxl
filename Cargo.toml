@@ -1,0 +1,11 @@
+[package]
+name        = "pxl"
+version     = "0.0.4"
+authors     = ["Casey Rodarmor <casey@rodarmor.com>"]
+description = "pxl fantasy console"
+license     = "CC0-1.0"
+
+[dependencies]
+cpal   = "0.8.1"
+gl     = "0.10.0"
+glutin = "0.16.0"
