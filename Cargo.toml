@@ -1,6 +1,6 @@
 [package]
 name        = "pxl"
-version     = "0.0.4"
+version     = "0.0.5"
 authors     = ["Casey Rodarmor <casey@rodarmor.com>"]
 description = "pxl fantasy console"
 license     = "CC0-1.0"
