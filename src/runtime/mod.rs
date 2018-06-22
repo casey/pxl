@@ -1,9 +1,9 @@
+extern crate cpal;
 extern crate gl;
 extern crate glutin;
-extern crate cpal;
 
-mod error;
 mod display;
+mod error;
 mod speaker;
 
 use std::{ffi::CString,
@@ -15,12 +15,10 @@ use std::{ffi::CString,
 
 use super::*;
 
-use self::{
-  glutin::{GlContext, GlWindow},
-  error::Error,
-  display::Display,
-  speaker::Speaker,
-};
+use self::{display::Display,
+           error::Error,
+           glutin::{GlContext, GlWindow},
+           speaker::Speaker};
 
 pub struct Runtime {
   events: Vec<Event>,
@@ -38,6 +36,8 @@ impl Runtime {
   pub fn new(
     program: Arc<Mutex<Program + Send>>,
     dimensions: (usize, usize),
+    vertex_shader_source: &str,
+    fragment_shader_source: &str,
   ) -> Result<Runtime, Error> {
     let window_event_loop = glutin::EventsLoop::new();
 
@@ -65,7 +65,7 @@ impl Runtime {
       dimensions.0 * dimensions.1
     ];
 
-    let display = Display::new(dimensions);
+    let display = Display::new(dimensions, vertex_shader_source, fragment_shader_source)?;
 
     let speaker = Speaker::new(program.clone())?;
 

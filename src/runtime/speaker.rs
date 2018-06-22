@@ -1,12 +1,11 @@
 use std::sync::{Arc, Mutex};
 
-use ::{
-  SAMPLES_PER_SECOND, Sample, Program,
-  runtime::{
-    error::Error,
-    cpal::{self, EventLoop, Format, SampleFormat, SampleRate, StreamData, UnknownTypeOutputBuffer},
-  },
-};
+use {runtime::{cpal::{self, EventLoop, Format, SampleFormat, SampleRate, StreamData,
+                      UnknownTypeOutputBuffer},
+               error::Error},
+     Program,
+     Sample,
+     SAMPLES_PER_SECOND};
 
 pub struct Speaker {
   program: Arc<Mutex<Program>>,
@@ -15,27 +14,24 @@ pub struct Speaker {
 
 impl Speaker {
   pub fn new(program: Arc<Mutex<Program>>) -> Result<Speaker, Error> {
-      let event_loop = EventLoop::new();
+    let event_loop = EventLoop::new();
 
-      let device =
-        cpal::default_output_device().ok_or(Error::AudioOutputDeviceInitialization)?;
+    let device = cpal::default_output_device().ok_or(Error::AudioOutputDeviceInitialization)?;
 
-      let format = Format {
-        channels: 2,
-        data_type: SampleFormat::F32,
-        sample_rate: SampleRate(SAMPLES_PER_SECOND),
-      };
+    let format = Format {
+      channels: 2,
+      data_type: SampleFormat::F32,
+      sample_rate: SampleRate(SAMPLES_PER_SECOND),
+    };
 
-      let stream_id = event_loop
-        .build_output_stream(&device, &format)
-        .unwrap();
+    let stream_id = event_loop.build_output_stream(&device, &format).unwrap();
 
-      event_loop.play_stream(stream_id);
+    event_loop.play_stream(stream_id);
 
-      Ok(Speaker {
-        program,
-        event_loop,
-      })
+    Ok(Speaker {
+      program,
+      event_loop,
+    })
   }
 
   pub fn play(self) -> ! {
