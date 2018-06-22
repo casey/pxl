@@ -1,9 +1,12 @@
 [package]
-name        = "pxl"
-version     = "0.0.5"
-authors     = ["Casey Rodarmor <casey@rodarmor.com>"]
-description = "pxl fantasy console"
-license     = "CC0-1.0"
+name          = "pxl"
+version       = "0.0.6"
+authors       = ["Casey Rodarmor <casey@rodarmor.com>"]
+description   = "🕹 A simple framework for making games"
+license       = "CC0-1.0"
+homepage      = "https://pxl.rs"
+repository    = "https://github.com/casey/pxl"
+documentation = "https://docs.rs/pxl"
 
 [dependencies]
 cpal   = "0.8.1"
