@@ -1,5 +1,4 @@
-
 /target
-/examples/life/target
+/examples/*/target
 **/*.rs.bk
-Cargo.lock
+/Cargo.lock
