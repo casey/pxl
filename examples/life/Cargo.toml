@@ -6,3 +6,7 @@ authors = ["Casey Rodarmor <casey@rodarmor.com>"]
 [dependencies]
 pxl  = {path = "../.."}
 rand = "0.5.0"
+
+[build-dependencies]
+pxl  = {path = "../.."}
+walkdir = "2.0.0"

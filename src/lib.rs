@@ -54,6 +54,24 @@ pub trait Program: Send {
   where
     Self: Sized;
 
+  /// Return the vertex shader to be used in the runtime's
+  /// rendering pipeline
+  fn vertex_shader() -> String
+  where
+    Self: Sized,
+  {
+    include_str!("vertex_shader.glsl").to_string()
+  }
+
+  /// Return the fragment shader to be used in the runtime's
+  /// rendering pipeline
+  fn fragment_shader() -> String
+  where
+    Self: Sized,
+  {
+    include_str!("fragment_shader.glsl").to_string()
+  }
+
   /// Return the title of the program
   ///
   /// Called by the runtime to set the window title
@@ -99,8 +117,14 @@ pub fn run<P: Program + 'static>() -> ! {
 
   let program = P::new();
   let dimensions = P::dimensions();
-  let result =
-    Runtime::new(Arc::new(Mutex::new(program)), dimensions).and_then(|runtime| runtime.run());
+  let vertex_shader = P::vertex_shader();
+  let fragment_shader = P::fragment_shader();
+  let result = Runtime::new(
+    Arc::new(Mutex::new(program)),
+    dimensions,
+    &vertex_shader,
+    &fragment_shader,
+  ).and_then(|runtime| runtime.run());
 
   if let Err(error) = result {
     eprintln!("{}", error);

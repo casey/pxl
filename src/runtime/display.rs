@@ -7,10 +7,6 @@ pub static VERTICES: [GLfloat; 24] = [
   0.0, 1.0, 1.0, 1.0, 0.0, 1.0,
 ];
 
-pub static VERTEX_SHADER_SOURCE: &'static str = include_str!("vertex.glsl");
-
-pub static FRAGMENT_SHADER_SOURCE: &'static str = include_str!("fragment.glsl");
-
 pub struct Display {
   fragment_shader: u32,
   shader_program: u32,
@@ -22,10 +18,17 @@ pub struct Display {
 }
 
 impl Display {
-  pub fn new(dimensions: (usize, usize)) -> Display {
-    let vertex_shader = Self::compile_shader(VERTEX_SHADER_SOURCE, gl::VERTEX_SHADER);
-    let fragment_shader = Self::compile_shader(FRAGMENT_SHADER_SOURCE, gl::FRAGMENT_SHADER);
-    let shader_program = Self::link_program(vertex_shader, fragment_shader);
+  pub fn new(
+    dimensions: (usize, usize),
+    vertex_shader_source: &str,
+    fragment_shader_source: &str,
+  ) -> Result<Display, Error> {
+    let vertex_shader = Self::compile_shader(vertex_shader_source, gl::VERTEX_SHADER)
+      .map_err(|info_log| Error::VertexShaderCompilation { info_log })?;
+    let fragment_shader = Self::compile_shader(fragment_shader_source, gl::FRAGMENT_SHADER)
+      .map_err(|info_log| Error::FragmentShaderCompilation { info_log })?;
+    let shader_program = Self::link_program(vertex_shader, fragment_shader)
+      .map_err(|info_log| Error::ShaderProgramLinking { info_log })?;
 
     let mut texture = 0;
     unsafe {
@@ -74,7 +77,7 @@ impl Display {
       );
     }
 
-    Display {
+    Ok(Display {
       fragment_shader,
       shader_program,
       texture,
@@ -82,7 +85,7 @@ impl Display {
       vbo,
       vertex_shader,
       dimensions,
-    }
+    })
   }
 
   pub fn present(&self, pixels: &[Pixel]) {
@@ -112,10 +115,9 @@ impl Display {
     }
   }
 
-  fn compile_shader(src: &str, ty: GLenum) -> GLuint {
+  fn compile_shader(src: &str, ty: GLenum) -> Result<GLuint, String> {
     unsafe {
       let shader = gl::CreateShader(ty);
-      // Attempt to compile the shader
       let c_str = CString::new(src.as_bytes()).unwrap();
       gl::ShaderSource(shader, 1, &c_str.as_ptr(), ptr::null());
       gl::CompileShader(shader);
@@ -136,18 +138,13 @@ impl Display {
           ptr::null_mut(),
           buf.as_mut_ptr() as *mut GLchar,
         );
-        panic!(
-          "{}",
-          str::from_utf8(&buf)
-            .ok()
-            .expect("ShaderInfoLog not valid utf8")
-        );
+        return Err(String::from_utf8_lossy(&buf).to_string());
       }
-      shader
+      Ok(shader)
     }
   }
 
-  fn link_program(vs: GLuint, fs: GLuint) -> GLuint {
+  fn link_program(vs: GLuint, fs: GLuint) -> Result<GLuint, String> {
     unsafe {
       let program = gl::CreateProgram();
       gl::AttachShader(program, vs);
@@ -169,17 +166,11 @@ impl Display {
           ptr::null_mut(),
           buf.as_mut_ptr() as *mut GLchar,
         );
-        panic!(
-          "{}",
-          str::from_utf8(&buf)
-            .ok()
-            .expect("ProgramInfoLog not valid utf8")
-        );
+        return Err(String::from_utf8_lossy(&buf).to_string());
       }
-      program
+      Ok(program)
     }
   }
-
 }
 
 impl Drop for Display {
