@@ -5,9 +5,10 @@ pub const SAMPLES_PER_SECOND: u32 = 48_000;
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct Pixel {
-  pub red: u8,
-  pub green: u8,
-  pub blue: u8,
+  pub red: f32,
+  pub green: f32,
+  pub blue: f32,
+  pub alpha: f32,
 }
 
 #[repr(C)]

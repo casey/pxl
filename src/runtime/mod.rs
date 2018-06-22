@@ -58,9 +58,10 @@ impl Runtime {
 
     let pixels = vec![
       Pixel {
-        red: 0,
-        green: 255,
-        blue: 0
+        red: 0.0,
+        green: 1.0,
+        blue: 0.0,
+        alpha: 1.0,
       };
       dimensions.0 * dimensions.1
     ];

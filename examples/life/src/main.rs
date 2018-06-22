@@ -88,13 +88,15 @@ impl Program for Life {
       *pixel = match cell {
         Alive => Pixel {
           red:   random(),
-          green: 0,
+          green: 0.0,
           blue:  random(),
+          alpha: 1.0,
         },
         Dead => Pixel {
-          red:   0,
-          green: 0,
-          blue:  0,
+          red:   0.0,
+          green: 0.0,
+          blue:  0.0,
+          alpha: 1.0,
         },
       };
     }

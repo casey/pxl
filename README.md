@@ -1,3 +1,3 @@
 # pxl
 
-A simple game framework in Rust.
+A simple framework for making games in Rust.
