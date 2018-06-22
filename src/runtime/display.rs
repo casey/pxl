@@ -99,12 +99,12 @@ impl Display {
       gl::TexImage2D(
         gl::TEXTURE_2D,
         0,
-        gl::RGB as i32,
+        gl::RGBA32F as i32,
         self.dimensions.0 as i32,
         self.dimensions.1 as i32,
         0,
-        gl::RGB,
-        gl::UNSIGNED_BYTE,
+        gl::RGBA,
+        gl::FLOAT,
         bytes,
       );
 
