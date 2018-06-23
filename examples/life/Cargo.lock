@@ -361,7 +361,7 @@ dependencies = [
 name = "life"
 version = "0.0.0"
 dependencies = [
- "pxl 0.0.6",
+ "pxl 0.0.7",
  "rand 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -503,7 +503,7 @@ dependencies = [
 
 [[package]]
 name = "pxl"
-version = "0.0.6"
+version = "0.0.7"
 dependencies = [
  "cpal 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "gl 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -39,7 +39,7 @@ pub enum Event {
   Key { character: char },
 }
 
-pub trait Program: Send {
+pub trait Program: Send + 'static {
   /// Initialize a new Program object
   fn new() -> Self
   where
@@ -111,7 +111,7 @@ pub trait Program: Send {
   fn synthesize(&mut self, _samples_played: u64, _buffer: &mut [Sample]) {}
 }
 
-pub fn run<P: Program + 'static>() -> ! {
+pub fn run<P: Program>() -> ! {
   use runtime::Runtime;
   use std::{process,
             sync::{Arc, Mutex}};
