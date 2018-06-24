@@ -128,16 +128,25 @@ impl Runtime {
         self.gl_window.resize(w, h);
       }
 
-      let dimensions;
+      // We try to avoid doing any work while holding the lock to give the
+      // audio callback a chance to obtain the lock.
+
+      self.program.lock().unwrap().tick(&self.events);
+
+      let dimensions = self.program.lock().unwrap().dimensions();
+
+      let pixel_count = dimensions.0 * dimensions.1;
+      if self.pixels.len() != pixel_count {
+        self.pixels.resize(pixel_count, DEFAULT_PIXEL);
+      }
+
+      {
+        let program = self.program.lock().unwrap();
+        self.display.set_shaders(program.vertex_shader(), program.fragment_shader())?;
+      }
+
       {
         let mut program = self.program.lock().unwrap();
-        program.tick(&self.events);
-        dimensions = program.dimensions();
-        let pixel_count = dimensions.0 * dimensions.1;
-        if self.pixels.len() != pixel_count {
-          self.pixels.resize(pixel_count, DEFAULT_PIXEL);
-        }
-        self.display.set_shaders(program.vertex_shader(), program.fragment_shader())?;
         program.render(&mut self.pixels);
         self.should_quit = program.should_quit() | should_quit;
         let title = program.title();
