@@ -46,9 +46,9 @@ pub trait Synthesizer: Send + 'static {
   ///
   /// Called by the runtime as needed to fill the outgoing audio buffer
   ///
-  /// * `played`  — number of samples written by previous calls to synthesize
-  /// * `buffer`  — an array of audio samples
-  fn synthesize(&mut self, _samples_played: u64, _buffer: &mut [Sample]) {}
+  /// * `samples_played` — number of samples written by previous calls to synthesize
+  /// * `output_buffer`  — the audio samples that synthesize should write
+  fn synthesize(&mut self, _samples_played: u64, _output_buffer: &mut [Sample]) {}
 }
 
 pub trait Program: 'static {

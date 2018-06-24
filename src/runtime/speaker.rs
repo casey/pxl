@@ -1,11 +1,10 @@
 use std::sync::{Arc, Mutex};
 
-use {runtime::{cpal::{self, EventLoop, Format, SampleFormat, SampleRate, StreamData,
-                      UnknownTypeOutputBuffer},
+use {runtime::{cpal::{self, EventLoop, Format, SampleRate, StreamData,
+                      UnknownTypeOutputBuffer, SupportedFormat, Sample},
                error::Error},
 
      Synthesizer,
-     Sample,
      SAMPLES_PER_SECOND};
 
 
@@ -20,13 +19,26 @@ impl Speaker {
 
     let device = cpal::default_output_device().ok_or(Error::AudioOutputDeviceInitialization)?;
 
-    let format = Format {
-      channels: 2,
-      data_type: SampleFormat::F32,
+    let mut supported_output_formats = device.supported_output_formats()
+      .map_err(|_| Error::AudioOutputDeviceInitialization)?
+      .filter(|f| {
+        f.channels == 2
+          && f.min_sample_rate <= SampleRate(SAMPLES_PER_SECOND)
+          && f.max_sample_rate >= SampleRate(SAMPLES_PER_SECOND)
+      }).collect::<Vec<SupportedFormat>>();
+
+    supported_output_formats.sort_unstable_by(|a, b| a.cmp_default_heuristics(b));
+
+    let supported_output_format = supported_output_formats.first()
+      .ok_or(Error::AudioOutputDoesNotSupport48khzSampleRate)?;
+
+    let output_format = Format {
+      channels:    2,
       sample_rate: SampleRate(SAMPLES_PER_SECOND),
+      data_type:   supported_output_format.data_type,
     };
 
-    let stream_id = event_loop.build_output_stream(&device, &format).unwrap();
+    let stream_id = event_loop.build_output_stream(&device, &output_format).unwrap();
 
     event_loop.play_stream(stream_id);
 
@@ -48,7 +60,7 @@ impl Speaker {
         samples.clear();
         samples.resize(
           sample_count,
-          Sample {
+          ::Sample {
             left: 0.0,
             right: 0.0,
           },
@@ -58,15 +70,31 @@ impl Speaker {
           .unwrap()
           .synthesize(samples_played, &mut samples);
         samples_played += sample_count as u64;
-        if let UnknownTypeOutputBuffer::F32(mut buffer) = buffer {
-          let mut i = 0;
-          for sample in samples.iter() {
-            buffer[i + 0] = sample.left;
-            buffer[i + 1] = sample.right;
-            i += 2;
+        match buffer {
+          UnknownTypeOutputBuffer::F32(mut buffer) => {
+            let mut i = 0;
+            for sample in samples.iter() {
+              buffer[i + 0] = sample.left;
+              buffer[i + 1] = sample.right;
+              i += 2;
+            }
           }
-        } else {
-          panic!("unexpected audio output stream format");
+          UnknownTypeOutputBuffer::I16(mut buffer) => {
+            let mut i = 0;
+            for sample in samples.iter() {
+              buffer[i + 0] = sample.left.to_i16();
+              buffer[i + 1] = sample.right.to_i16();
+              i += 2;
+            }
+          }
+          UnknownTypeOutputBuffer::U16(mut buffer) => {
+            let mut i = 0;
+            for sample in samples.iter() {
+              buffer[i + 0] = sample.left.to_u16();
+              buffer[i + 1] = sample.right.to_u16();
+              i += 2;
+            }
+          }
         }
       } else {
         panic!("unexpected audio input stream");
