@@ -71,7 +71,7 @@ impl Program for Life {
     }
   }
 
-  fn dimensions() -> (usize, usize) {
+  fn dimensions(&self) -> (usize, usize) {
     (WIDTH, HEIGHT)
   }
 
