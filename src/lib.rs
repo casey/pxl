@@ -126,16 +126,13 @@ pub trait Program: 'static {
 }
 
 pub fn run<P: Program>() -> ! {
-  use runtime::Runtime;
-  use std::process;
-
   let program = P::new();
-  let result = Runtime::new(Box::new(program)).and_then(|runtime| runtime.run());
+  let result = runtime::Runtime::new(Box::new(program)).and_then(|runtime| runtime.run());
 
   if let Err(error) = result {
     eprintln!("{}", error);
-    process::exit(1);
+    std::process::exit(1);
   } else {
-    process::exit(0);
+    std::process::exit(0);
   }
 }
