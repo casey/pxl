@@ -51,7 +51,7 @@ pub trait Synthesizer: Send + 'static {
   fn synthesize(&mut self, _samples_played: u64, _buffer: &mut [Sample]) {}
 }
 
-pub trait Program: Send + 'static {
+pub trait Program: 'static {
   /// Initialize a new Program object
   fn new() -> Self
   where
@@ -119,11 +119,10 @@ pub trait Program: Send + 'static {
 
 pub fn run<P: Program>() -> ! {
   use runtime::Runtime;
-  use std::{process,
-            sync::{Arc, Mutex}};
+  use std::process;
 
   let program = P::new();
-  let result = Runtime::new(Arc::new(Mutex::new(program))).and_then(|runtime| runtime.run());
+  let result = Runtime::new(Box::new(program)).and_then(|runtime| runtime.run());
 
   if let Err(error) = result {
     eprintln!("{}", error);
