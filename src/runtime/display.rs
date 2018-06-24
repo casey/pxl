@@ -2,6 +2,8 @@ use super::*;
 
 use runtime::gl::types::*;
 
+use std::collections::HashMap;
+
 pub static VERTICES: [GLfloat; 24] = [
   -1.0, 1.0, 0.0, 1.0, 1.0, -1.0, 0.0, 1.0, -1.0, -1.0, 0.0, 1.0, -1.0, 1.0, 0.0, 1.0, 1.0, -1.0,
   0.0, 1.0, 1.0, 1.0, 0.0, 1.0,
@@ -14,23 +16,21 @@ pub struct Display {
   vao: u32,
   vbo: u32,
   vertex_shader: u32,
+  vertex_shader_cache: HashMap<String, u32>,
+  fragment_shader_cache: HashMap<String, u32>,
+  shader_program_cache: HashMap<(u32, u32), u32>,
 }
 
 impl Display {
-  pub fn new(vertex_shader_source: &str, fragment_shader_source: &str) -> Result<Display, Error> {
-    let vertex_shader = Self::compile_shader(vertex_shader_source, gl::VERTEX_SHADER)
-      .map_err(|info_log| Error::VertexShaderCompilation { info_log })?;
-    let fragment_shader = Self::compile_shader(fragment_shader_source, gl::FRAGMENT_SHADER)
-      .map_err(|info_log| Error::FragmentShaderCompilation { info_log })?;
-    let shader_program = Self::link_program(vertex_shader, fragment_shader)
-      .map_err(|info_log| Error::ShaderProgramLinking { info_log })?;
-
+  pub fn new() -> Result<Display, Error> {
     let mut texture = 0;
     unsafe {
       gl::GenTextures(1, &mut texture);
       gl::BindTexture(gl::TEXTURE_2D, texture);
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
       gl::ActiveTexture(gl::TEXTURE0);
     }
 
@@ -49,37 +49,69 @@ impl Display {
         mem::transmute(&VERTICES[0]),
         gl::STATIC_DRAW,
       );
-
-      // Use shader program
-      gl::UseProgram(shader_program);
-      gl::BindFragDataLocation(shader_program, 0, CString::new("color").unwrap().as_ptr());
-
-      let pixel_uniform =
-        gl::GetUniformLocation(shader_program, CString::new("pixels").unwrap().as_ptr());
-      gl::Uniform1i(pixel_uniform, 0);
-
-      // Specify the layout of the vertex data
-      let pos_attr =
-        gl::GetAttribLocation(shader_program, CString::new("position").unwrap().as_ptr());
-      gl::EnableVertexAttribArray(pos_attr as GLuint);
-      gl::VertexAttribPointer(
-        pos_attr as GLuint,
-        4,
-        gl::FLOAT,
-        gl::FALSE as GLboolean,
-        0,
-        ptr::null(),
-      );
     }
 
     Ok(Display {
-      fragment_shader,
-      shader_program,
+      vertex_shader_cache: HashMap::new(),
+      fragment_shader_cache: HashMap::new(),
+      shader_program_cache: HashMap::new(),
+      fragment_shader: 0,
+      shader_program: 0,
+      vertex_shader: 0,
       texture,
       vao,
       vbo,
-      vertex_shader,
     })
+  }
+
+  pub fn set_shaders(
+    &mut self,
+    vertex_shader_source: &str,
+    fragment_shader_source: &str,
+  ) -> Result<(), Error> {
+    let vertex_shader = Self::compile_shader(
+      vertex_shader_source,
+      gl::VERTEX_SHADER,
+      &mut self.vertex_shader_cache,
+    ).map_err(|info_log| Error::VertexShaderCompilation { info_log })?;
+
+    let fragment_shader = Self::compile_shader(
+      fragment_shader_source,
+      gl::FRAGMENT_SHADER,
+      &mut self.fragment_shader_cache,
+    ).map_err(|info_log| Error::FragmentShaderCompilation { info_log })?;
+
+    let shader_program = Self::link_program(
+      vertex_shader,
+      fragment_shader,
+      &mut self.shader_program_cache,
+    ).map_err(|info_log| Error::ShaderProgramLinking { info_log })?;
+  
+    if self.shader_program != shader_program {
+      unsafe {
+        gl::UseProgram(shader_program);
+        gl::BindFragDataLocation(shader_program, 0, CString::new("color").unwrap().as_ptr());
+
+        let pixel_uniform =
+          gl::GetUniformLocation(shader_program, CString::new("pixels").unwrap().as_ptr());
+        gl::Uniform1i(pixel_uniform, 0);
+
+        let pos_attr =
+          gl::GetAttribLocation(shader_program, CString::new("position").unwrap().as_ptr());
+        gl::EnableVertexAttribArray(pos_attr as GLuint);
+        gl::VertexAttribPointer(
+          pos_attr as GLuint,
+          4,
+          gl::FLOAT,
+          gl::FALSE as GLboolean,
+          0,
+          ptr::null(),
+        );
+      }
+
+      self.shader_program = shader_program;
+    }
+    Ok(())
   }
 
   pub fn present(&self, pixels: &[Pixel], dimensions: (usize, usize)) {
@@ -109,10 +141,18 @@ impl Display {
     }
   }
 
-  fn compile_shader(src: &str, ty: GLenum) -> Result<GLuint, String> {
+  fn compile_shader(
+    source: &str,
+    ty: GLenum,
+    shader_cache: &mut HashMap<String, GLuint>,
+  ) -> Result<GLuint, String> {
+    if let Some(shader) = shader_cache.get(source).cloned() {
+      return Ok(shader);
+    }
+
     unsafe {
       let shader = gl::CreateShader(ty);
-      let c_str = CString::new(src.as_bytes()).unwrap();
+      let c_str = CString::new(source.as_bytes()).unwrap();
       gl::ShaderSource(shader, 1, &c_str.as_ptr(), ptr::null());
       gl::CompileShader(shader);
 
@@ -134,11 +174,24 @@ impl Display {
         );
         return Err(String::from_utf8_lossy(&buf).to_string());
       }
+
+      shader_cache.insert(source.to_string(), shader);
+
       Ok(shader)
     }
   }
 
-  fn link_program(vs: GLuint, fs: GLuint) -> Result<GLuint, String> {
+  fn link_program(
+    vs: GLuint,
+    fs: GLuint,
+    program_cache: &mut HashMap<(GLuint, GLuint), GLuint>,
+  ) -> Result<GLuint, String> {
+    let cache_key = (vs, fs);
+
+    if let Some(program) = program_cache.get(&cache_key).cloned() {
+      return Ok(program);
+    }
+
     unsafe {
       let program = gl::CreateProgram();
       gl::AttachShader(program, vs);
@@ -162,6 +215,9 @@ impl Display {
         );
         return Err(String::from_utf8_lossy(&buf).to_string());
       }
+
+      program_cache.insert(cache_key, program);
+
       Ok(program)
     }
   }

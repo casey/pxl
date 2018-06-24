@@ -39,11 +39,7 @@ pub struct Runtime {
 }
 
 impl Runtime {
-  pub fn new(
-    program: Arc<Mutex<Program + Send>>,
-    vertex_shader_source: &str,
-    fragment_shader_source: &str,
-  ) -> Result<Runtime, Error> {
+  pub fn new(program: Arc<Mutex<Program + Send>>) -> Result<Runtime, Error> {
     let window_event_loop = glutin::EventsLoop::new();
 
     let current_title;
@@ -67,7 +63,7 @@ impl Runtime {
       gl::load_with(|symbol| gl_window.get_proc_address(symbol) as *const _);
     }
 
-    let display = Display::new(vertex_shader_source, fragment_shader_source)?;
+    let display = Display::new()?;
 
     let speaker = Speaker::new(program.clone())?;
 
@@ -141,6 +137,7 @@ impl Runtime {
         if self.pixels.len() != pixel_count {
           self.pixels.resize(pixel_count, DEFAULT_PIXEL);
         }
+        self.display.set_shaders(program.vertex_shader(), program.fragment_shader())?;
         program.render(&mut self.pixels);
         self.should_quit = program.should_quit() | should_quit;
         let title = program.title();
