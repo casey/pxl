@@ -112,6 +112,14 @@ pub trait Program: 'static {
   fn render(&mut self, _pixels: &mut [Pixel]) {}
 
   /// The program's synthesizer
+  ///
+  /// Will be called by the runtime during initialization. If it returns
+  /// Some, the contained Synthesizer will be moved to a dedicated audio
+  /// thread and called periodically to produce samples for the outgoing
+  /// audio stream.
+  ///
+  /// In order to prevent buffer underruns, avoid locking the `Mutex`
+  /// containing the Synthesizer for long periods of time.
   fn synthesizer(&self) -> Option<Arc<Mutex<Synthesizer>>> {
     None
   }
