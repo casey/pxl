@@ -8,14 +8,31 @@ use pxl::*;
 
 use cell::Cell::{self, *};
 
-use std::f64;
+use std::{f64, sync::{Arc, Mutex}};
 
-const WIDTH:  usize = 512;
-const HEIGHT: usize = 512;
+const WIDTH:  usize = 1024;
+const HEIGHT: usize = 1024;
 const TAU:    f64   = f64::consts::PI * 2.0;
 
+struct LifeSynthesizer {
+  intensity: f32,
+}
+
+impl Synthesizer for LifeSynthesizer {
+  fn synthesize(&mut self, mut samples_played: u64, samples: &mut [Sample]) {
+    for sample in samples {
+      let time = samples_played as f64 / SAMPLES_PER_SECOND as f64;
+      let s = (time * 440.0 * TAU).sin() as f32 * self.intensity;
+      sample.left = s;
+      sample.right = s;
+      samples_played += 1;
+    }
+  }
+}
+
 struct Life {
-  cells: Vec<Cell>,
+  synthesizer: Arc<Mutex<LifeSynthesizer>>,
+  cells:       Vec<Cell>,
 }
 
 impl Life {
@@ -76,6 +93,9 @@ impl Program for Life {
       } else {
         Dead
       }).collect(),
+      synthesizer: Arc::new(Mutex::new(LifeSynthesizer {
+        intensity: 0.0,
+      })),
     }
   }
 
@@ -95,6 +115,11 @@ impl Program for Life {
     }
 
     self.step();
+
+    let alive: f32 = self.cells.iter().map(|cell| match cell { Alive => 1.0, Dead => 0.0, }).sum();
+    let intensity = alive / self.cells.len() as f32;
+
+    self.synthesizer.lock().unwrap().intensity = intensity;
   }
 
   fn render(&mut self, pixels: &mut [Pixel]) {
@@ -117,17 +142,8 @@ impl Program for Life {
     }
   }
 
-  fn synthesize(&mut self, mut samples_played: u64, samples: &mut [Sample]) {
-    let alive: f32 = self.cells.iter().map(|cell| match cell { Alive => 1.0, Dead => 0.0, }).sum();
-    let intensity = alive / self.cells.len() as f32;
-
-    for sample in samples {
-      let time = samples_played as f64 / SAMPLES_PER_SECOND as f64;
-      let s = (time * 440.0 * TAU).sin() as f32 * intensity;
-      sample.left = s;
-      sample.right = s;
-      samples_played += 1;
-    }
+  fn synthesizer(&self) -> Option<Arc<Mutex<Synthesizer>>> {
+    Some(self.synthesizer.clone())
   }
 
   fn fragment_shader(&self) -> &str {

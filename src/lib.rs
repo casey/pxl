@@ -1,5 +1,7 @@
 mod runtime;
 
+use std::sync::{Arc, Mutex};
+
 pub const SAMPLES_PER_SECOND: u32 = 48_000;
 
 #[repr(C)]
@@ -37,6 +39,16 @@ pub enum ButtonState {
 pub enum Event {
   Button { state: ButtonState, button: Button },
   Key { character: char },
+}
+
+pub trait Synthesizer: Send + 'static {
+  /// Synthesize audio
+  ///
+  /// Called by the runtime as needed to fill the outgoing audio buffer
+  ///
+  /// * `played`  — number of samples written by previous calls to synthesize
+  /// * `buffer`  — an array of audio samples
+  fn synthesize(&mut self, _samples_played: u64, _buffer: &mut [Sample]) {}
 }
 
 pub trait Program: Send + 'static {
@@ -99,13 +111,10 @@ pub trait Program: Send + 'static {
   ///              the `x`th pixel in the `y`th row.
   fn render(&mut self, _pixels: &mut [Pixel]) {}
 
-  /// Synthesize audio
-  ///
-  /// Called by the runtime as needed to fill the outgoing audio buffer
-  ///
-  /// * `played`  — number of samples written by previous calls to synthesize
-  /// * `buffer`  — an array of audio samples
-  fn synthesize(&mut self, _samples_played: u64, _buffer: &mut [Sample]) {}
+  /// The program's synthesizer
+  fn synthesizer(&self) -> Option<Arc<Mutex<Synthesizer>>> {
+    None
+  }
 }
 
 pub fn run<P: Program>() -> ! {

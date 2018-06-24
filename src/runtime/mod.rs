@@ -39,15 +39,17 @@ pub struct Runtime {
 }
 
 impl Runtime {
-  pub fn new(program: Arc<Mutex<Program + Send>>) -> Result<Runtime, Error> {
+  pub fn new(program: Arc<Mutex<Program>>) -> Result<Runtime, Error> {
     let window_event_loop = glutin::EventsLoop::new();
 
     let current_title;
     let dimensions;
+    let synthesizer;
     {
       let program = program.lock().unwrap();
       current_title = program.title().to_string();
       dimensions = program.dimensions();
+      synthesizer = program.synthesizer();
     }
 
     let window = glutin::WindowBuilder::new()
@@ -65,11 +67,13 @@ impl Runtime {
 
     let display = Display::new()?;
 
-    let speaker = Speaker::new(program.clone())?;
+    if let Some(synthesizer) = synthesizer {
+      let speaker = Speaker::new(synthesizer)?;
 
-    thread::spawn(move || {
-      speaker.play();
-    });
+      thread::spawn(move || {
+        speaker.play();
+      });
+    }
 
     Ok(Runtime {
       should_quit: false,
