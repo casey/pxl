@@ -45,16 +45,6 @@ pub trait Program: Send + 'static {
   where
     Self: Sized;
 
-  /// Return the desired width and height of pixel surface
-  ///
-  /// Determines the length of the pixel slice passed to
-  /// `render()`. If (256, 256) is returned, the pixel
-  /// slice passed to `render()` will contain 256 * 256,
-  /// elements.
-  fn dimensions() -> (usize, usize)
-  where
-    Self: Sized;
-
   /// Return the vertex shader to be used in the runtime's
   /// rendering pipeline
   fn vertex_shader() -> String
@@ -72,6 +62,15 @@ pub trait Program: Send + 'static {
   {
     include_str!("fragment_shader.glsl").to_string()
   }
+
+  /// Return the desired width and height of pixel surface
+  ///
+  /// Will be called immediately before calling `render()`.
+  /// Determines the length of the pixel slice passed to
+  /// `render()`. If (256, 256) is returned, the pixel
+  /// slice passed to `render()` will contain 256 * 256,
+  /// elements.
+  fn dimensions(&self) -> (usize, usize);
 
   /// Return the title of the program
   ///
@@ -117,12 +116,10 @@ pub fn run<P: Program>() -> ! {
             sync::{Arc, Mutex}};
 
   let program = P::new();
-  let dimensions = P::dimensions();
   let vertex_shader = P::vertex_shader();
   let fragment_shader = P::fragment_shader();
   let result = Runtime::new(
     Arc::new(Mutex::new(program)),
-    dimensions,
     &vertex_shader,
     &fragment_shader,
   ).and_then(|runtime| runtime.run());

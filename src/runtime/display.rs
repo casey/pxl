@@ -14,15 +14,10 @@ pub struct Display {
   vao: u32,
   vbo: u32,
   vertex_shader: u32,
-  dimensions: (usize, usize),
 }
 
 impl Display {
-  pub fn new(
-    dimensions: (usize, usize),
-    vertex_shader_source: &str,
-    fragment_shader_source: &str,
-  ) -> Result<Display, Error> {
+  pub fn new(vertex_shader_source: &str, fragment_shader_source: &str) -> Result<Display, Error> {
     let vertex_shader = Self::compile_shader(vertex_shader_source, gl::VERTEX_SHADER)
       .map_err(|info_log| Error::VertexShaderCompilation { info_log })?;
     let fragment_shader = Self::compile_shader(fragment_shader_source, gl::FRAGMENT_SHADER)
@@ -84,11 +79,10 @@ impl Display {
       vao,
       vbo,
       vertex_shader,
-      dimensions,
     })
   }
 
-  pub fn present(&self, pixels: &[Pixel]) {
+  pub fn present(&self, pixels: &[Pixel], dimensions: (usize, usize)) {
     let pixels = pixels.as_ptr();
     let bytes = pixels as *const std::os::raw::c_void;
 
@@ -100,8 +94,8 @@ impl Display {
         gl::TEXTURE_2D,
         0,
         gl::RGBA32F as i32,
-        self.dimensions.0 as i32,
-        self.dimensions.1 as i32,
+        dimensions.0 as i32,
+        dimensions.1 as i32,
         0,
         gl::RGBA,
         gl::FLOAT,

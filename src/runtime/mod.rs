@@ -20,6 +20,13 @@ use self::{display::Display,
            glutin::{GlContext, GlWindow},
            speaker::Speaker};
 
+static DEFAULT_PIXEL: Pixel = Pixel {
+  red:   0.0,
+  green: 0.0,
+  blue:  0.0,
+  alpha: 1.0,
+};
+
 pub struct Runtime {
   events: Vec<Event>,
   window_event_loop: glutin::EventsLoop,
@@ -28,20 +35,24 @@ pub struct Runtime {
   should_quit: bool,
   gl_window: GlWindow,
   current_title: String,
-
   display: Display,
 }
 
 impl Runtime {
   pub fn new(
     program: Arc<Mutex<Program + Send>>,
-    dimensions: (usize, usize),
     vertex_shader_source: &str,
     fragment_shader_source: &str,
   ) -> Result<Runtime, Error> {
     let window_event_loop = glutin::EventsLoop::new();
 
-    let current_title = program.lock().unwrap().title().to_string();
+    let current_title;
+    let dimensions;
+    {
+      let program = program.lock().unwrap();
+      current_title = program.title().to_string();
+      dimensions = program.dimensions();
+    }
 
     let window = glutin::WindowBuilder::new()
       .with_title(current_title.as_str())
@@ -56,17 +67,7 @@ impl Runtime {
       gl::load_with(|symbol| gl_window.get_proc_address(symbol) as *const _);
     }
 
-    let pixels = vec![
-      Pixel {
-        red: 0.0,
-        green: 1.0,
-        blue: 0.0,
-        alpha: 1.0,
-      };
-      dimensions.0 * dimensions.1
-    ];
-
-    let display = Display::new(dimensions, vertex_shader_source, fragment_shader_source)?;
+    let display = Display::new(vertex_shader_source, fragment_shader_source)?;
 
     let speaker = Speaker::new(program.clone())?;
 
@@ -77,8 +78,8 @@ impl Runtime {
     Ok(Runtime {
       should_quit: false,
       events: Vec::new(),
+      pixels: Vec::new(),
       program,
-      pixels,
       window_event_loop,
       gl_window,
       current_title,
@@ -131,9 +132,15 @@ impl Runtime {
         self.gl_window.resize(w, h);
       }
 
+      let dimensions;
       {
         let mut program = self.program.lock().unwrap();
         program.tick(&self.events);
+        dimensions = program.dimensions();
+        let pixel_count = dimensions.0 * dimensions.1;
+        if self.pixels.len() != pixel_count {
+          self.pixels.resize(pixel_count, DEFAULT_PIXEL);
+        }
         program.render(&mut self.pixels);
         self.should_quit = program.should_quit() | should_quit;
         let title = program.title();
@@ -144,7 +151,7 @@ impl Runtime {
         }
       }
 
-      self.display.present(&self.pixels);
+      self.display.present(&self.pixels, dimensions);
 
       self.gl_window.swap_buffers()?;
     }
