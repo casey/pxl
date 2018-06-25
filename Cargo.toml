@@ -1,6 +1,6 @@
 [package]
 name          = "pxl"
-version       = "0.0.7"
+version       = "0.0.8"
 authors       = ["Casey Rodarmor <casey@rodarmor.com>"]
 description   = "🕹 A simple framework for making games"
 license       = "CC0-1.0"
