@@ -10,7 +10,6 @@ use std::{ffi::CString,
           mem,
           ptr,
           str,
-          sync::{Arc, Mutex},
           thread};
 
 use super::*;
@@ -31,7 +30,7 @@ pub struct Runtime {
   events: Vec<Event>,
   window_event_loop: glutin::EventsLoop,
   pixels: Vec<Pixel>,
-  program: Arc<Mutex<Program>>,
+  program: Box<Program>,
   should_quit: bool,
   gl_window: GlWindow,
   current_title: String,
@@ -39,16 +38,12 @@ pub struct Runtime {
 }
 
 impl Runtime {
-  pub fn new(program: Arc<Mutex<Program + Send>>) -> Result<Runtime, Error> {
+  pub fn new(program: Box<Program>) -> Result<Runtime, Error> {
     let window_event_loop = glutin::EventsLoop::new();
 
-    let current_title;
-    let dimensions;
-    {
-      let program = program.lock().unwrap();
-      current_title = program.title().to_string();
-      dimensions = program.dimensions();
-    }
+    let current_title = program.title().to_string();
+    let dimensions = program.dimensions();
+    let synthesizer = program.synthesizer();
 
     let window = glutin::WindowBuilder::new()
       .with_title(current_title.as_str())
@@ -65,11 +60,13 @@ impl Runtime {
 
     let display = Display::new()?;
 
-    let speaker = Speaker::new(program.clone())?;
+    if let Some(synthesizer) = synthesizer {
+      let speaker = Speaker::new(synthesizer)?;
 
-    thread::spawn(move || {
-      speaker.play();
-    });
+      thread::spawn(move || {
+        speaker.play();
+      });
+    }
 
     Ok(Runtime {
       should_quit: false,
@@ -128,33 +125,24 @@ impl Runtime {
         self.gl_window.resize(w, h);
       }
 
-      // We try to avoid doing any work while holding the lock to give the
-      // audio callback a chance to obtain the lock.
+      self.program.tick(&self.events);
 
-      self.program.lock().unwrap().tick(&self.events);
-
-      let dimensions = self.program.lock().unwrap().dimensions();
+      let dimensions = self.program.dimensions();
 
       let pixel_count = dimensions.0 * dimensions.1;
       if self.pixels.len() != pixel_count {
         self.pixels.resize(pixel_count, DEFAULT_PIXEL);
       }
 
-      {
-        let program = self.program.lock().unwrap();
-        self.display.set_shaders(program.vertex_shader(), program.fragment_shader())?;
-      }
+      self.display.set_shaders(self.program.vertex_shader(), self.program.fragment_shader())?;
 
-      {
-        let mut program = self.program.lock().unwrap();
-        program.render(&mut self.pixels);
-        self.should_quit = program.should_quit() | should_quit;
-        let title = program.title();
-        if title != self.current_title {
-          self.gl_window.set_title(title);
-          self.current_title.clear();
-          self.current_title.push_str(&title);
-        }
+      self.program.render(&mut self.pixels);
+      self.should_quit = self.program.should_quit() | should_quit;
+      let title = self.program.title();
+      if title != self.current_title {
+        self.gl_window.set_title(title);
+        self.current_title.clear();
+        self.current_title.push_str(&title);
       }
 
       self.display.present(&self.pixels, dimensions);

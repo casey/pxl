@@ -1,5 +1,7 @@
 mod runtime;
 
+use std::sync::{Arc, Mutex};
+
 pub const SAMPLES_PER_SECOND: u32 = 48_000;
 
 #[repr(C)]
@@ -39,7 +41,17 @@ pub enum Event {
   Key { character: char },
 }
 
-pub trait Program: Send + 'static {
+pub trait Synthesizer: Send + 'static {
+  /// Synthesize audio
+  ///
+  /// Called by the runtime as needed to fill the outgoing audio buffer
+  ///
+  /// * `played`  — number of samples written by previous calls to synthesize
+  /// * `buffer`  — an array of audio samples
+  fn synthesize(&mut self, _samples_played: u64, _buffer: &mut [Sample]) {}
+}
+
+pub trait Program: 'static {
   /// Initialize a new Program object
   fn new() -> Self
   where
@@ -99,22 +111,26 @@ pub trait Program: Send + 'static {
   ///              the `x`th pixel in the `y`th row.
   fn render(&mut self, _pixels: &mut [Pixel]) {}
 
-  /// Synthesize audio
+  /// The program's synthesizer
   ///
-  /// Called by the runtime as needed to fill the outgoing audio buffer
+  /// Will be called by the runtime during initialization. If it returns
+  /// Some, the contained Synthesizer will be moved to a dedicated audio
+  /// thread and called periodically to produce samples for the outgoing
+  /// audio stream.
   ///
-  /// * `played`  — number of samples written by previous calls to synthesize
-  /// * `buffer`  — an array of audio samples
-  fn synthesize(&mut self, _samples_played: u64, _buffer: &mut [Sample]) {}
+  /// In order to prevent buffer underruns, avoid locking the `Mutex`
+  /// containing the Synthesizer for long periods of time.
+  fn synthesizer(&self) -> Option<Arc<Mutex<Synthesizer>>> {
+    None
+  }
 }
 
 pub fn run<P: Program>() -> ! {
   use runtime::Runtime;
-  use std::{process,
-            sync::{Arc, Mutex}};
+  use std::process;
 
   let program = P::new();
-  let result = Runtime::new(Arc::new(Mutex::new(program))).and_then(|runtime| runtime.run());
+  let result = Runtime::new(Box::new(program)).and_then(|runtime| runtime.run());
 
   if let Err(error) = result {
     eprintln!("{}", error);

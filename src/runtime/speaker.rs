@@ -3,17 +3,19 @@ use std::sync::{Arc, Mutex};
 use {runtime::{cpal::{self, EventLoop, Format, SampleFormat, SampleRate, StreamData,
                       UnknownTypeOutputBuffer},
                error::Error},
-     Program,
+
+     Synthesizer,
      Sample,
      SAMPLES_PER_SECOND};
 
+
 pub struct Speaker {
-  program: Arc<Mutex<Program>>,
+  synthesizer: Arc<Mutex<Synthesizer>>,
   event_loop: EventLoop,
 }
 
 impl Speaker {
-  pub fn new(program: Arc<Mutex<Program>>) -> Result<Speaker, Error> {
+  pub fn new(synthesizer: Arc<Mutex<Synthesizer>>) -> Result<Speaker, Error> {
     let event_loop = EventLoop::new();
 
     let device = cpal::default_output_device().ok_or(Error::AudioOutputDeviceInitialization)?;
@@ -29,13 +31,13 @@ impl Speaker {
     event_loop.play_stream(stream_id);
 
     Ok(Speaker {
-      program,
+      synthesizer,
       event_loop,
     })
   }
 
   pub fn play(self) -> ! {
-    let program = self.program;
+    let synthesizer = self.synthesizer;
     let event_loop = self.event_loop;
     let mut samples = Vec::new();
     let mut samples_played = 0;
@@ -51,7 +53,7 @@ impl Speaker {
             right: 0.0,
           },
         );
-        program
+        synthesizer
           .lock()
           .unwrap()
           .synthesize(samples_played, &mut samples);
