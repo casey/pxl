@@ -2,13 +2,12 @@ default: test
 
 test:
 	cargo test
-	cd examples/life && cargo test
 
 life:
-	cd examples/life && cargo run --release
+	cargo run --release --example life
 
 shaders:
-	cd examples/shaders && cargo run --release
+	cargo run --release --example shaders
 
 fmt:
 	cargo fmt
