@@ -1,8 +1,0 @@
-[package]
-name    = "life"
-version = "0.0.0"
-authors = ["Casey Rodarmor <casey@rodarmor.com>"]
-
-[dependencies]
-pxl  = {path = "../.."}
-rand = "0.5.0"

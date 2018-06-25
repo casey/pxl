@@ -12,3 +12,14 @@ documentation = "https://docs.rs/pxl"
 cpal   = "0.8.1"
 gl     = "0.10.0"
 glutin = "0.16.0"
+
+[dev-dependencies]
+rand = "0.5.0"
+
+[[example]]
+name = "shaders"
+path = "examples/shaders/main.rs"
+
+[[example]]
+name = "life"
+path = "examples/life.rs"

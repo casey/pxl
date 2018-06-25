@@ -1,18 +1,38 @@
 extern crate pxl;
 extern crate rand;
 
-mod cell;
-
+use std::{f64, sync::{Arc, Mutex}};
 use rand::prelude::*;
 use pxl::*;
 
-use cell::Cell::{self, *};
-
-use std::{f64, sync::{Arc, Mutex}};
+use Cell::*;
 
 const WIDTH:  usize = 1024;
 const HEIGHT: usize = 1024;
 const TAU:    f64   = f64::consts::PI * 2.0;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Cell {
+  Alive,
+  Dead,
+}
+
+impl Cell {
+  pub fn tick(self, neighbors: u8) -> Cell {
+    match (self, neighbors) {
+      (Alive, 0) => Dead,
+      (Alive, 1) => Dead,
+      (Alive, 2) => Alive,
+      (Alive, 3) => Alive,
+      (Alive, _) => Dead,
+      (Dead,  0) => Dead,
+      (Dead,  1) => Dead,
+      (Dead,  2) => Dead,
+      (Dead,  3) => Alive,
+      (Dead,  _) => Dead,
+    }
+  }
+}
 
 struct LifeSynthesizer {
   intensity: f32,
