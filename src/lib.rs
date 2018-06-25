@@ -57,6 +57,15 @@ pub trait Program: 'static {
   where
     Self: Sized;
 
+  /// Return the desired width and height of pixel surface
+  ///
+  /// Will be called immediately before calling `render()`.
+  /// Determines the length of the pixel slice passed to
+  /// `render()`. If (256, 256) is returned, the pixel
+  /// slice passed to `render()` will contain 256 * 256,
+  /// elements.
+  fn dimensions(&self) -> (usize, usize);
+
   /// Return the vertex shader to be used in the runtime's
   /// rendering pipeline
   ///
@@ -72,15 +81,6 @@ pub trait Program: 'static {
   fn fragment_shader(&self) -> &str {
     include_str!("fragment_shader.glsl")
   }
-
-  /// Return the desired width and height of pixel surface
-  ///
-  /// Will be called immediately before calling `render()`.
-  /// Determines the length of the pixel slice passed to
-  /// `render()`. If (256, 256) is returned, the pixel
-  /// slice passed to `render()` will contain 256 * 256,
-  /// elements.
-  fn dimensions(&self) -> (usize, usize);
 
   /// Return the title of the program
   ///
@@ -107,8 +107,13 @@ pub trait Program: 'static {
   ///
   /// Called by the runtime whenever the display is ready to present a new frame
   ///
-  /// * `pixels` — a 256 * 256 long slice of pixels. `pixels[x + y * 256]` is
-  ///              the `x`th pixel in the `y`th row.
+  /// WIDTH  — first element of the tuple returned by `dimensions()`
+  /// HEIGHT — second element of the tuple returned by `dimensions()`
+  ///
+  /// * `pixels` — a slice of pixels with `WIDTH * HEIGHT` elements
+  ///              `pixels[x + y * WIDTH]` is the `x`th pixel in the
+  ///              `y`th row, with `(0,0)` starting in the upper left
+  ///              corner of the screen
   fn render(&mut self, _pixels: &mut [Pixel]) {}
 
   /// The program's synthesizer
