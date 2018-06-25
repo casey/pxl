@@ -5,14 +5,14 @@ extern crate lazy_static;
 #[macro_use]
 extern crate quote;
 extern crate image;
-extern crate regex;
 extern crate proc_macro;
+extern crate regex;
 
 mod error;
 mod module;
 mod resource;
 
-use std::{env, path::Path, fs::File, io::prelude::*};
+use std::{env, fs::File, io::prelude::*, path::Path};
 
 use error::Error;
 use module::Module;

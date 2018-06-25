@@ -1,6 +1,6 @@
 pub static VERTEX_SHADERS: &[&str] = &[
-// default vertex shader
-r#"
+  // default vertex shader
+  r#"
 #version 150
 
 in  vec4 position;
@@ -12,8 +12,8 @@ void main() {
   gl_Position = position;
 }
 "#,
-// vertical flip;
-r#"
+  // vertical flip;
+  r#"
 #version 150
 
 in  vec4 position;
@@ -25,8 +25,8 @@ void main() {
   gl_Position = position;
 }
 "#,
-// squish vertically
-r#"
+  // squish vertically
+  r#"
 #version 150
 
 in  vec4 position;

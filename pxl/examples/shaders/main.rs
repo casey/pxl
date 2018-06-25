@@ -3,11 +3,11 @@ extern crate pxl;
 mod fragment_shaders;
 mod vertex_shaders;
 
-use pxl::*;
 use fragment_shaders::FRAGMENT_SHADERS;
+use pxl::*;
 use vertex_shaders::VERTEX_SHADERS;
 
-const WIDTH:  usize = 768;
+const WIDTH: usize = 768;
 const HEIGHT: usize = 768;
 
 const WHITE: Pixel = Pixel {
@@ -31,7 +31,10 @@ struct Shaders {
 
 impl Program for Shaders {
   fn new() -> Shaders {
-    Shaders{active_vertex_shader_index: 0, active_fragment_shader_index: 0}
+    Shaders {
+      active_vertex_shader_index: 0,
+      active_fragment_shader_index: 0,
+    }
   }
 
   fn title(&self) -> &str {
@@ -53,16 +56,28 @@ impl Program for Shaders {
   fn tick(&mut self, events: &[Event]) {
     for event in events {
       match event {
-        Event::Button{state: ButtonState::Pressed, button: Button::Right} => {
+        Event::Button {
+          state: ButtonState::Pressed,
+          button: Button::Right,
+        } => {
           self.active_fragment_shader_index += 1;
         }
-        Event::Button{state: ButtonState::Pressed, button: Button::Left} => {
+        Event::Button {
+          state: ButtonState::Pressed,
+          button: Button::Left,
+        } => {
           self.active_fragment_shader_index += FRAGMENT_SHADERS.len() - 1;
         }
-        Event::Button{state: ButtonState::Pressed, button: Button::Up} => {
+        Event::Button {
+          state: ButtonState::Pressed,
+          button: Button::Up,
+        } => {
           self.active_vertex_shader_index += 1;
         }
-        Event::Button{state: ButtonState::Pressed, button: Button::Down} => {
+        Event::Button {
+          state: ButtonState::Pressed,
+          button: Button::Down,
+        } => {
           self.active_vertex_shader_index += VERTEX_SHADERS.len() - 1;
         }
         _ => {}
@@ -89,7 +104,6 @@ impl Program for Shaders {
         i += 1;
       }
     }
-
   }
 }
 

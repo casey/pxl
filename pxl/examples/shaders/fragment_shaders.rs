@@ -1,6 +1,6 @@
 pub static FRAGMENT_SHADERS: &[&str] = &[
-// Passthrough
-r#"
+  // Passthrough
+  r#"
 #version 150
 
 in  vec2 uv;
@@ -12,8 +12,8 @@ void main() {
   color = texture(pixels, uv);
 }
 "#,
-// invert
-r#"
+  // invert
+  r#"
 #version 150
 
 in  vec2 uv;
@@ -25,9 +25,8 @@ void main() {
   color = vec4(vec3(1.0) - texture(pixels, uv).rgb, 1.0);
 }
 "#,
-
-// CMYK
-r#"
+  // CMYK
+  r#"
 #version 150
 
 in  vec2 uv;
@@ -58,14 +57,14 @@ void main() {
   }
 }
 "#,
-// empty
-r#"
+  // empty
+  r#"
 #version 150
 void main() {
 }
 "#,
-// zoom
-r#"
+  // zoom
+  r#"
 #version 150
 
 in  vec2 uv;

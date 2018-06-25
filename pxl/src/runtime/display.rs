@@ -86,7 +86,7 @@ impl Display {
       fragment_shader,
       &mut self.shader_program_cache,
     ).map_err(|info_log| Error::ShaderProgramLinking { info_log })?;
-  
+
     if self.shader_program != shader_program {
       unsafe {
         gl::UseProgram(shader_program);
