@@ -6,23 +6,18 @@ mod display;
 mod error;
 mod speaker;
 
-use std::{ffi::CString,
-          mem,
-          ptr,
-          str,
-          thread};
+use std::{ffi::CString, mem, ptr, str, thread};
 
 use super::*;
 
-use self::{display::Display,
-           error::Error,
-           glutin::{GlContext, GlWindow},
-           speaker::Speaker};
+use self::{
+  display::Display, error::Error, glutin::{GlContext, GlWindow}, speaker::Speaker,
+};
 
 static DEFAULT_PIXEL: Pixel = Pixel {
-  red:   0.0,
+  red: 0.0,
   green: 0.0,
-  blue:  0.0,
+  blue: 0.0,
   alpha: 1.0,
 };
 
@@ -134,7 +129,9 @@ impl Runtime {
         self.pixels.resize(pixel_count, DEFAULT_PIXEL);
       }
 
-      self.display.set_shaders(self.program.vertex_shader(), self.program.fragment_shader())?;
+      self
+        .display
+        .set_shaders(self.program.vertex_shader(), self.program.fragment_shader())?;
 
       self.program.render(&mut self.pixels);
       self.should_quit = self.program.should_quit() | should_quit;

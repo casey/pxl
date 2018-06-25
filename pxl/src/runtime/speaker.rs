@@ -1,12 +1,15 @@
 use std::sync::{Arc, Mutex};
 
-use {runtime::{cpal::{self, EventLoop, Format, SampleRate, StreamData,
-                      UnknownTypeOutputBuffer, SupportedFormat, Sample},
-               error::Error},
-
-     Synthesizer,
-     SAMPLES_PER_SECOND};
-
+use {
+  runtime::{
+    cpal::{
+      self, EventLoop, Format, Sample, SampleRate, StreamData, SupportedFormat,
+      UnknownTypeOutputBuffer,
+    },
+    error::Error,
+  },
+  Synthesizer, SAMPLES_PER_SECOND,
+};
 
 pub struct Speaker {
   synthesizer: Arc<Mutex<Synthesizer>>,
@@ -19,26 +22,31 @@ impl Speaker {
 
     let device = cpal::default_output_device().ok_or(Error::AudioOutputDeviceInitialization)?;
 
-    let mut supported_output_formats = device.supported_output_formats()
+    let mut supported_output_formats = device
+      .supported_output_formats()
       .map_err(|_| Error::AudioOutputDeviceInitialization)?
       .filter(|f| {
         f.channels == 2
           && f.min_sample_rate <= SampleRate(SAMPLES_PER_SECOND)
           && f.max_sample_rate >= SampleRate(SAMPLES_PER_SECOND)
-      }).collect::<Vec<SupportedFormat>>();
+      })
+      .collect::<Vec<SupportedFormat>>();
 
     supported_output_formats.sort_unstable_by(|a, b| a.cmp_default_heuristics(b));
 
-    let supported_output_format = supported_output_formats.first()
+    let supported_output_format = supported_output_formats
+      .first()
       .ok_or(Error::AudioOutputDoesNotSupport48khzSampleRate)?;
 
     let output_format = Format {
-      channels:    2,
+      channels: 2,
       sample_rate: SampleRate(SAMPLES_PER_SECOND),
-      data_type:   supported_output_format.data_type,
+      data_type: supported_output_format.data_type,
     };
 
-    let stream_id = event_loop.build_output_stream(&device, &output_format).unwrap();
+    let stream_id = event_loop
+      .build_output_stream(&device, &output_format)
+      .unwrap();
 
     event_loop.play_stream(stream_id);
 

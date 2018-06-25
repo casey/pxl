@@ -39,7 +39,9 @@ impl Display for Error {
     use self::Error::*;
     match self {
       AudioOutputDeviceInitialization => write!(f, "Failed to initialize audio output device."),
-      AudioOutputDoesNotSupport48khzSampleRate => write!(f, "Audio output device does not support 48khz sample rate"),
+      AudioOutputDoesNotSupport48khzSampleRate => {
+        write!(f, "Audio output device does not support 48khz sample rate")
+      }
       WindowCreation { creation_error } => write!(f, "Failed to create window: {}", creation_error),
       GraphicsContext { context_error } => {
         write!(f, "OpenGL graphics context errror: {}", context_error)

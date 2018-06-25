@@ -1,15 +1,17 @@
 extern crate pxl;
 extern crate rand;
 
-use std::{f64, sync::{Arc, Mutex}};
-use rand::prelude::*;
 use pxl::*;
+use rand::prelude::*;
+use std::{
+  f64, sync::{Arc, Mutex},
+};
 
 use Cell::*;
 
-const WIDTH:  usize = 1024;
+const WIDTH: usize = 1024;
 const HEIGHT: usize = 1024;
-const TAU:    f64   = f64::consts::PI * 2.0;
+const TAU: f64 = f64::consts::PI * 2.0;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Cell {
@@ -25,11 +27,11 @@ impl Cell {
       (Alive, 2) => Alive,
       (Alive, 3) => Alive,
       (Alive, _) => Dead,
-      (Dead,  0) => Dead,
-      (Dead,  1) => Dead,
-      (Dead,  2) => Dead,
-      (Dead,  3) => Alive,
-      (Dead,  _) => Dead,
+      (Dead, 0) => Dead,
+      (Dead, 1) => Dead,
+      (Dead, 2) => Dead,
+      (Dead, 3) => Alive,
+      (Dead, _) => Dead,
     }
   }
 }
@@ -52,7 +54,7 @@ impl Synthesizer for LifeSynthesizer {
 
 struct Life {
   synthesizer: Arc<Mutex<LifeSynthesizer>>,
-  cells:       Vec<Cell>,
+  cells: Vec<Cell>,
 }
 
 impl Life {
@@ -74,7 +76,7 @@ impl Life {
     for y in &[n, y, s] {
       for x in &[w, x, e] {
         let ni = self.index(*x, *y);
-      
+
         if ni == i {
           continue;
         }
@@ -89,33 +91,32 @@ impl Life {
   }
 
   pub fn step(&mut self) {
-    let cells = self.cells.iter().enumerate().map(|(i, cell)| {
-      cell.tick(self.neighbors(i))
-    }).collect::<Vec<Cell>>();
+    let cells = self
+      .cells
+      .iter()
+      .enumerate()
+      .map(|(i, cell)| cell.tick(self.neighbors(i)))
+      .collect::<Vec<Cell>>();
 
     self.cells = cells;
   }
 
   pub fn reset(&mut self) {
-    self.cells = (0..WIDTH*HEIGHT).into_iter().map(|_| if random() {
-      Alive
-    } else {
-      Dead
-    }).collect();
+    self.cells = (0..WIDTH * HEIGHT)
+      .into_iter()
+      .map(|_| if random() { Alive } else { Dead })
+      .collect();
   }
 }
 
 impl Program for Life {
   fn new() -> Life {
     Life {
-      cells: (0..WIDTH*HEIGHT).into_iter().map(|_| if random() {
-        Alive
-      } else {
-        Dead
-      }).collect(),
-      synthesizer: Arc::new(Mutex::new(LifeSynthesizer {
-        intensity: 0.0,
-      })),
+      cells: (0..WIDTH * HEIGHT)
+        .into_iter()
+        .map(|_| if random() { Alive } else { Dead })
+        .collect(),
+      synthesizer: Arc::new(Mutex::new(LifeSynthesizer { intensity: 0.0 })),
     }
   }
 
@@ -129,14 +130,25 @@ impl Program for Life {
 
   fn tick(&mut self, events: &[Event]) {
     for event in events {
-      if let Event::Button{state: ButtonState::Released, button: Button::Action} = event {
+      if let Event::Button {
+        state: ButtonState::Released,
+        button: Button::Action,
+      } = event
+      {
         self.reset();
       }
     }
 
     self.step();
 
-    let alive: f32 = self.cells.iter().map(|cell| match cell { Alive => 1.0, Dead => 0.0, }).sum();
+    let alive: f32 = self
+      .cells
+      .iter()
+      .map(|cell| match cell {
+        Alive => 1.0,
+        Dead => 0.0,
+      })
+      .sum();
     let intensity = alive / self.cells.len() as f32;
 
     self.synthesizer.lock().unwrap().intensity = intensity;
@@ -147,15 +159,15 @@ impl Program for Life {
     for (pixel, cell) in pixels.iter_mut().zip(&self.cells) {
       *pixel = match cell {
         Alive => Pixel {
-          red:   random(),
+          red: random(),
           green: random(),
-          blue:  random(),
+          blue: random(),
           alpha: 1.0,
         },
         Dead => Pixel {
-          red:   0.0,
+          red: 0.0,
           green: 0.0,
-          blue:  0.0,
+          blue: 0.0,
           alpha: 1.0,
         },
       };
@@ -225,7 +237,6 @@ void main() {
 }
 "
   }
-
 }
 
 fn main() {
