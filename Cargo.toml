@@ -3,4 +3,5 @@
 members = [
   "pxl",
   "pxl-build",
+  "pxl-build-test",
 ]

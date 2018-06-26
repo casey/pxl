@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 mod runtime;
 
 use std::sync::{Arc, Mutex};
@@ -5,7 +7,7 @@ use std::sync::{Arc, Mutex};
 pub const SAMPLES_PER_SECOND: u32 = 48_000;
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Pixel {
   pub red: f32,
   pub green: f32,
@@ -13,8 +15,14 @@ pub struct Pixel {
   pub alpha: f32,
 }
 
+pub struct Image<'pixels> {
+  pub width: usize,
+  pub height: usize,
+  pub pixels: &'pixels [Pixel],
+}
+
 #[repr(C)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Sample {
   pub left: f32,
   pub right: f32,
@@ -35,7 +43,7 @@ pub enum ButtonState {
   Released,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Event {
   Button { state: ButtonState, button: Button },
   Key { character: char },

@@ -8,6 +8,7 @@ A simple framework for making games in Rust.
 
 - `pxl`: The library and runtime. Start here!
 - `pxl-build`: A compile-time resource loader. Check this out if you want to use static assets, like images and sounds.
+- `pxl-build-test`: Tests and usage example for `pxl-build`.
 
 ## Building
 
