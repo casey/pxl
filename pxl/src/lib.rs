@@ -187,6 +187,19 @@ pub trait Program: 'static {
     include_str!("fragment_shader.glsl")
   }
 
+  /// Postprocessing filters to be applied after rendering.
+  ///
+  /// Filters may read from a texture sampler named "input",
+  /// which for the first filter will contain the output of
+  /// the main fragment shader, and for the filters thereafter
+  /// will contain the output of the previous filter.
+  ///
+  /// The output of the last filter in the chain will be sent
+  /// to the display.
+  fn filters(&self) -> &[&str] {
+    &[]
+  }
+
   /// Return the title of the program
   ///
   /// Called by the runtime to set the window title
