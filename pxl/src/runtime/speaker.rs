@@ -1,17 +1,8 @@
 //! Audio playback
 
-use std::sync::{Arc, Mutex};
+use runtime::common::*;
 
-use {
-  runtime::{
-    cpal::{
-      self, EventLoop, Format, Sample, SampleRate, StreamData, SupportedFormat,
-      UnknownTypeOutputBuffer,
-    },
-    error::Error,
-  },
-  Synthesizer, SAMPLES_PER_SECOND,
-};
+use runtime::cpal;
 
 pub struct Speaker {
   synthesizer: Arc<Mutex<Synthesizer>>,

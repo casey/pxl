@@ -1,8 +1,8 @@
 //! Runtime errors
 
-extern crate glutin;
+use runtime::common::*;
 
-use std::fmt::{self, Display, Formatter};
+use runtime::glutin;
 
 pub enum Error {
   AudioOutputDeviceInitialization,
@@ -40,7 +40,7 @@ impl From<glutin::ContextError> for Error {
   }
 }
 
-impl Display for Error {
+impl fmt::Display for Error {
   fn fmt(&self, f: &mut Formatter) -> fmt::Result {
     use self::Error::*;
     match self {

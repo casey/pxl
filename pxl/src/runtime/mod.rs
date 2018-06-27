@@ -4,17 +4,13 @@ extern crate cpal;
 extern crate gl;
 extern crate glutin;
 
+mod common;
 mod display;
 mod error;
+mod shader_cache;
 mod speaker;
 
-use std::{ffi::CString, mem, ptr, str, thread};
-
-use super::*;
-
-use self::{
-  display::Display, error::Error, glutin::{GlContext, GlWindow}, speaker::Speaker,
-};
+use runtime::common::*;
 
 static DEFAULT_PIXEL: Pixel = Pixel {
   red: 0.0,

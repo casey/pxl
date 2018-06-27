@@ -1,10 +1,8 @@
 //! Graphics rendering for the native OpenGl-based runtime
 
-use super::*;
+use runtime::common::*;
 
-use runtime::gl::types::*;
-
-use std::collections::HashMap;
+use runtime::gl;
 
 pub static VERTICES: [GLfloat; 24] = [
   -1.0, 1.0, 0.0, 1.0, 1.0, -1.0, 0.0, 1.0, -1.0, -1.0, 0.0, 1.0, -1.0, 1.0, 0.0, 1.0, 1.0, -1.0,
@@ -21,6 +19,7 @@ pub struct Display {
   vertex_shader_cache: HashMap<String, u32>,
   fragment_shader_cache: HashMap<String, u32>,
   shader_program_cache: HashMap<(u32, u32), u32>,
+  shader_cache: ShaderCache,
 }
 
 impl Display {
@@ -48,12 +47,13 @@ impl Display {
       gl::BufferData(
         gl::ARRAY_BUFFER,
         (VERTICES.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
-        &VERTICES[0] as *const f32 as *const std::os::raw::c_void,
+        &VERTICES[0] as *const f32 as *const c_void,
         gl::STATIC_DRAW,
       );
     }
 
     Ok(Display {
+      shader_cache: ShaderCache::new(),
       vertex_shader_cache: HashMap::new(),
       fragment_shader_cache: HashMap::new(),
       shader_program_cache: HashMap::new(),
@@ -70,7 +70,7 @@ impl Display {
     &mut self,
     vertex_shader_source: &str,
     fragment_shader_source: &str,
-    filter_shader_sources: &[&str],
+    _filter_shader_sources: &[&str],
   ) -> Result<(), Error> {
     // Compile vertex shader
     let vertex_shader = Self::compile_shader(
@@ -95,6 +95,7 @@ impl Display {
       &mut self.shader_program_cache,
     )?;
 
+    /*
     // compile filter shaders
     for filter_shader_source in filter_shader_sources {
       // TODO: refactor this so it's a single function
@@ -119,6 +120,7 @@ impl Display {
         &mut self.shader_program_cache,
       )?;
     }
+    */
 
     if self.shader_program != shader_program {
       unsafe {
@@ -150,7 +152,7 @@ impl Display {
 
   pub fn present(&self, pixels: &[Pixel], dimensions: (usize, usize)) {
     let pixels = pixels.as_ptr();
-    let bytes = pixels as *const std::os::raw::c_void;
+    let bytes = pixels as *const c_void;
 
     unsafe {
       gl::ClearColor(0.0, 0.0, 0.0, 1.0);
