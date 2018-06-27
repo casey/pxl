@@ -1,3 +1,5 @@
+//! Runtime errors
+
 extern crate glutin;
 
 use std::fmt::{self, Display, Formatter};
