@@ -14,12 +14,16 @@ pub enum Error {
     context_error: glutin::ContextError,
   },
   VertexShaderCompilation {
+    source: String,
     info_log: String,
   },
   FragmentShaderCompilation {
+    source: String,
     info_log: String,
   },
   ShaderProgramLinking {
+    vertex_shader_source: String,
+    fragment_shader_source: String,
     info_log: String,
   },
 }
@@ -48,15 +52,26 @@ impl Display for Error {
       GraphicsContext { context_error } => {
         write!(f, "OpenGL graphics context errror: {}", context_error)
       }
-      VertexShaderCompilation { info_log } => {
-        write!(f, "Failed to compile vertex shader:\n{}", info_log)
-      }
-      FragmentShaderCompilation { info_log } => {
-        write!(f, "Failed to compile fragment shader:\n{}", info_log)
-      }
-      ShaderProgramLinking { info_log } => {
-        write!(f, "Failed to link shader program:\n{}", info_log)
-      }
+      VertexShaderCompilation { source, info_log } => write!(
+        f,
+        "Failed to compile vertex shader. Source:\n{}\nInfo log:\n{}",
+        source, info_log
+      ),
+      FragmentShaderCompilation { source, info_log } => write!(
+        f,
+        "Failed to compile fragment shader. Source:\n{}\nInfo log:\n{}",
+        source, info_log
+      ),
+      ShaderProgramLinking {
+        vertex_shader_source,
+        fragment_shader_source,
+        info_log,
+      } => write!(
+        f,
+        "Failed to link shader program. Vertex shader source:\n{}
+      Fragment shader source:\n{}\nInfo log:\n{}",
+        fragment_shader_source, vertex_shader_source, info_log
+      ),
     }
   }
 }

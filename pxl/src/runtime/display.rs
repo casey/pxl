@@ -70,24 +70,55 @@ impl Display {
     &mut self,
     vertex_shader_source: &str,
     fragment_shader_source: &str,
+    filter_shader_sources: &[&str],
   ) -> Result<(), Error> {
+    // Compile vertex shader
     let vertex_shader = Self::compile_shader(
       vertex_shader_source,
       gl::VERTEX_SHADER,
       &mut self.vertex_shader_cache,
-    ).map_err(|info_log| Error::VertexShaderCompilation { info_log })?;
+    )?;
 
+    // Compile fragment shader
     let fragment_shader = Self::compile_shader(
       fragment_shader_source,
       gl::FRAGMENT_SHADER,
       &mut self.fragment_shader_cache,
-    ).map_err(|info_log| Error::FragmentShaderCompilation { info_log })?;
+    )?;
 
+    // Link shader program
     let shader_program = Self::link_program(
       vertex_shader,
       fragment_shader,
+      vertex_shader_source,
+      fragment_shader_source,
       &mut self.shader_program_cache,
-    ).map_err(|info_log| Error::ShaderProgramLinking { info_log })?;
+    )?;
+
+    // compile filter shaders
+    for filter_shader_source in filter_shader_sources {
+      // TODO: refactor this so it's a single function
+      //       that takes all caches. or maybe create a
+      //       shader cache object and make it a method
+      //       on that.
+      // TODO: do I need to set attributes/etc every time
+      //       i switch programs, or just once the first
+      //       time i load them?
+      let filter_shader = Self::compile_shader(
+        filter_shader_source,
+        gl::FRAGMENT_SHADER,
+        &mut self.fragment_shader_cache,
+      )?;
+
+      // Link filter shader program
+      let _filter_shader_program = Self::link_program(
+        vertex_shader,
+        filter_shader,
+        vertex_shader_source,
+        filter_shader_source,
+        &mut self.shader_program_cache,
+      )?;
+    }
 
     if self.shader_program != shader_program {
       unsafe {
@@ -148,7 +179,7 @@ impl Display {
     source: &str,
     ty: GLenum,
     shader_cache: &mut HashMap<String, GLuint>,
-  ) -> Result<GLuint, String> {
+  ) -> Result<GLuint, Error> {
     if let Some(shader) = shader_cache.get(source).cloned() {
       return Ok(shader);
     }
@@ -175,7 +206,13 @@ impl Display {
           ptr::null_mut(),
           buf.as_mut_ptr() as *mut GLchar,
         );
-        return Err(String::from_utf8_lossy(&buf).to_string());
+        let info_log = String::from_utf8_lossy(&buf).to_string();
+        let source = source.to_string();
+        return Err(if ty == gl::FRAGMENT_SHADER {
+          Error::FragmentShaderCompilation { source, info_log }
+        } else {
+          Error::VertexShaderCompilation { source, info_log }
+        });
       }
 
       shader_cache.insert(source.to_string(), shader);
@@ -187,8 +224,10 @@ impl Display {
   fn link_program(
     vs: GLuint,
     fs: GLuint,
+    vertex_shader_source: &str,
+    fragment_shader_source: &str,
     program_cache: &mut HashMap<(GLuint, GLuint), GLuint>,
-  ) -> Result<GLuint, String> {
+  ) -> Result<GLuint, Error> {
     let cache_key = (vs, fs);
 
     if let Some(program) = program_cache.get(&cache_key).cloned() {
@@ -216,7 +255,14 @@ impl Display {
           ptr::null_mut(),
           buf.as_mut_ptr() as *mut GLchar,
         );
-        return Err(String::from_utf8_lossy(&buf).to_string());
+        let info_log = String::from_utf8_lossy(&buf).to_string();
+        let vertex_shader_source = vertex_shader_source.to_string();
+        let fragment_shader_source = fragment_shader_source.to_string();
+        return Err(Error::ShaderProgramLinking {
+          info_log,
+          vertex_shader_source,
+          fragment_shader_source,
+        });
       }
 
       program_cache.insert(cache_key, program);

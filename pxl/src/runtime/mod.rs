@@ -130,9 +130,11 @@ impl Runtime {
         self.pixels.resize(pixel_count, DEFAULT_PIXEL);
       }
 
-      self
-        .display
-        .set_shaders(self.program.vertex_shader(), self.program.fragment_shader())?;
+      self.display.set_shaders(
+        self.program.vertex_shader(),
+        self.program.fragment_shader(),
+        self.program.filter_shaders(),
+      )?;
 
       self.program.render(&mut self.pixels);
       self.should_quit = self.program.should_quit() | should_quit;

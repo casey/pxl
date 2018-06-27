@@ -189,6 +189,9 @@ pub trait Program: 'static {
 
   /// Postprocessing filters to be applied after rendering.
   ///
+  /// The default implementation returns a single filter shader
+  /// that makes pixels with alpha values greater than 1.0 glow.
+  ///
   /// Filters may read from a texture sampler named "input",
   /// which for the first filter will contain the output of
   /// the main fragment shader, and for the filters thereafter
@@ -196,8 +199,8 @@ pub trait Program: 'static {
   ///
   /// The output of the last filter in the chain will be sent
   /// to the display.
-  fn filters(&self) -> &[&str] {
-    &[]
+  fn filter_shaders(&self) -> &[&str] {
+    &[include_str!("glow_filter_shader.glsl")]
   }
 
   /// Return the title of the program

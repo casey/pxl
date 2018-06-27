@@ -3,6 +3,10 @@ default: test
 
 # submit a pull request
 pr: fmt clippy test
+	@echo Checking for FIXME/TODO...
+	! grep --color -En 'FIXME|TODO' src/*.rs
+	@echo Checking for long lines...
+	! grep --color -En '.{101}' src/*.rs
 	git branch | grep '^ *master'
 	git diff --exit-code
 	git diff --cached --exit-code
@@ -15,6 +19,9 @@ test:
 # format rust sourcecode with rustfmt
 fmt:
 	cargo fmt
+
+watch:
+	cargo watch --clear --exec fmt --exec check
 
 # everyone's favorite animate paper clip
 clippy:
