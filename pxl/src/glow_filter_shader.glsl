@@ -11,14 +11,16 @@
 in vec2 uv;
 
 // The output color of this fragment
-out vec4 output;
+out vec4 color;
 
 // A texture sampler containing the pixels written by the previous
 // fragment shader in the pipeline
-uniform sampler2D input;
+uniform sampler2D source;
 
 void main() {
   // Look up the color in the `pixels` texture at coordinates `uv`
   // and use them to set the output color of this fragment.
-  output = texture(input, uv);
+  vec4 sample = texture(source, uv);
+  
+  color = vec4(vec3(1.0) - sample.rgb, sample.a);
 }

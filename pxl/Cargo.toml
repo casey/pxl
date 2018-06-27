@@ -23,3 +23,7 @@ path = "examples/shaders/main.rs"
 [[example]]
 name = "life"
 path = "examples/life.rs"
+
+[[example]]
+name = "blaster"
+path = "examples/blaster.rs"
