@@ -1,0 +1,11 @@
+[package]
+name = "pxl-build-test"
+version = "0.0.0"
+authors = ["Casey Rodarmor <casey@rodarmor.com>"]
+publish = false
+
+[dependencies]
+"pxl" = {path = "../pxl"}
+
+[build-dependencies]
+"pxl-build" = {path = "../pxl-build"}

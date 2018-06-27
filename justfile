@@ -12,7 +12,7 @@ shaders:
 fmt:
 	cargo fmt
 
-# clean up feature branch BRANCH
+# clean up the feature branch named BRANCH
 done BRANCH:
 	git checkout {{BRANCH}}
 	git pull --rebase github master

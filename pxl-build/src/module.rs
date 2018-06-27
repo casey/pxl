@@ -1,13 +1,4 @@
-use std::{
-  collections::BTreeMap, fmt::{self, Display, Formatter}, path::{Path, PathBuf},
-};
-
-use quote::Tokens;
-use regex::Regex;
-
-use resource::{Resource, ResourceKind};
-
-use super::*;
+use common::*;
 
 lazy_static! {
   static ref STEM_RE: Regex = Regex::new("^[a-zA-Z][a-zA-Z0-9_-]*$").unwrap();
@@ -15,12 +6,19 @@ lazy_static! {
 
 #[derive(PartialEq, Debug)]
 pub struct Module {
-  children: BTreeMap<String, Resource>,
+  items: BTreeMap<String, Item>,
+}
+
+#[derive(PartialEq, Debug)]
+pub enum Item {
+  Module { module: Module },
+  Resource { resource: Resource },
 }
 
 impl Module {
   pub fn from_path(module_path: impl AsRef<Path>) -> Result<Module, Error> {
     let module_path = module_path.as_ref();
+    println!("cargo:rerun-if-changed={}", module_path.display());
     let metadata = module_path
       .metadata()
       .map_err(|io_error| (io_error, module_path))?;
@@ -31,15 +29,15 @@ impl Module {
       });
     }
 
-    let mut children: BTreeMap<String, Resource> = BTreeMap::new();
+    let mut items: BTreeMap<String, Item> = BTreeMap::new();
     let mut identifiers: BTreeMap<String, PathBuf> = BTreeMap::new();
 
-    for child in module_path
+    for entry in module_path
       .read_dir()
       .map_err(|io_error| (io_error, module_path))?
     {
-      let child = child.map_err(|io_error| (io_error, module_path))?;
-      let path = child.path().to_path_buf();
+      let entry = entry.map_err(|io_error| (io_error, module_path))?;
+      let path = entry.path().to_path_buf();
       let metadata = path.metadata().map_err(|io_error| (io_error, module_path))?;
       let filename = path.strip_prefix(module_path).unwrap();
 
@@ -57,6 +55,8 @@ impl Module {
         return Err(Error::FilenameNotValidRustIdentifier { path: path.clone() });
       }
 
+      let stem = stem.replace("-", "_");
+
       let extension = if let Some(extension) = filename.extension() {
         Some(extension
           .to_str()
@@ -66,9 +66,9 @@ impl Module {
       };
 
       let identifier = if metadata.is_dir() {
-        stem.replace("-", "_").to_lowercase()
+        stem.to_lowercase()
       } else {
-        stem.replace("-", "_").to_uppercase()
+        stem.to_uppercase()
       };
 
       if let Some(a) = identifiers.remove(&identifier) {
@@ -79,35 +79,56 @@ impl Module {
         });
       }
 
-      let kind = if metadata.is_dir() {
-        ResourceKind::Module
+      let item = if metadata.is_dir() {
+        if let Some(extension) = extension {
+          return Err(Error::UnsupportedExtension {
+            path: path.clone(),
+            extension: extension.to_string(),
+          });
+        }
+        Item::Module {
+          module: Module::from_path(&path)?,
+        }
       } else {
-        match extension {
-          None => return Err(Error::MissingExtension { path: path.clone() }),
-          Some("blob") => ResourceKind::Blob,
-          Some("jpg") | Some("jpeg") | Some("png") | Some("gif") | Some("webp") | Some("tif")
-          | Some("tiff") | Some("tga") | Some("bmp") | Some("ico") | Some("hdr") | Some("pbm")
-          | Some("pam") | Some("ppm") | Some("pgm") => ResourceKind::Image,
-          Some(other) => return Err(Error::UnsupportedExtension { path: path.clone() }),
+        if let Some(extension) = extension {
+          Item::Resource {
+            resource: Resource::from_path_and_extension(&path, extension)?,
+          }
+        } else {
+          return Err(Error::MissingExtension { path: path.clone() });
         }
       };
-
-      children.insert(identifier, kind.resource(path.clone())?);
+      items.insert(identifier, item);
     }
 
-    Ok(Module { children })
+    Ok(Module { items })
   }
 
   pub fn tokens(self) -> Tokens {
-    let children = self
-      .children
-      .into_iter()
-      .map(|(identifier, child)| child.tokens(identifier));
+    let items = self.items.into_iter().map(|(identifier, item)| {
+      let ident = Ident::from(identifier);
+      match item {
+        Item::Resource { resource } => {
+          let type_tokens = resource.type_tokens();
+          let tokens = resource.tokens();
+          quote! {
+            pub static #ident: #type_tokens = #tokens;
+          }
+        }
+        Item::Module { module } => {
+          let tokens = module.tokens();
+          quote! {
+            mod #ident {
+              #tokens
+            }
+          }
+        }
+      }
+    });
 
     quote! {
-      use pxl::Image;
-
-      #(#children)*
+      use pxl::{Pixel, Image};
+      #(#items)*
     }
   }
 }
@@ -130,7 +151,7 @@ mod test {
 
     let module = Module::from_path(tempdir.path()).unwrap();
 
-    assert!(module.children.is_empty());
+    assert!(module.items.is_empty());
   }
 
   #[test]
@@ -140,15 +161,17 @@ mod test {
     let mut blob_path = tempdir.path().to_path_buf();
     blob_path.push("file.blob");
 
-    fs::write(blob_path, "hello");
+    fs::write(blob_path, "hello").unwrap();
 
     let module = Module::from_path(tempdir.path()).unwrap();
 
-    assert_eq!(module.children.len(), 1);
+    assert_eq!(module.items.len(), 1);
     assert_eq!(
-      module.children["FILE"],
-      Resource::Blob {
-        bytes: b"hello".iter().cloned().collect()
+      module.items["FILE"],
+      Item::Resource {
+        resource: Resource::Blob {
+          bytes: b"hello".iter().cloned().collect()
+        }
       }
     );
   }
@@ -162,19 +185,21 @@ mod test {
 
     let image = RgbaImage::from_pixel(1, 1, Rgba { data: [1, 2, 3, 4] });
 
-    image.save(blob_path);
+    image.save(blob_path).unwrap();
 
     let module = Module::from_path(tempdir.path()).unwrap();
 
     let pixels = vec![1.0 / 255.0, 2.0 / 255.0, 3.0 / 255.0, 4.0 / 255.0];
 
-    assert_eq!(module.children.len(), 1);
+    assert_eq!(module.items.len(), 1);
     assert_eq!(
-      module.children["FILE"],
-      Resource::Image {
-        width: 1,
-        height: 1,
-        pixels
+      module.items["FILE"],
+      Item::Resource {
+        resource: Resource::Image {
+          width: 1,
+          height: 1,
+          pixels,
+        }
       }
     );
   }
@@ -192,20 +217,22 @@ mod test {
     let mut blob_path = submodule_path.clone();
     blob_path.push("file.blob");
 
-    fs::write(blob_path, "hello");
+    fs::write(blob_path, "hello").unwrap();
 
     let module = Module::from_path(tempdir.path()).unwrap();
 
-    assert_eq!(module.children.len(), 1);
-    if let Resource::Module {
-      module: Module { ref children },
-    } = module.children["sub"]
+    assert_eq!(module.items.len(), 1);
+    if let Item::Module {
+      module: Module { ref items },
+    } = module.items["sub"]
     {
-      assert_eq!(children.len(), 1);
+      assert_eq!(items.len(), 1);
       assert_eq!(
-        children["FILE"],
-        Resource::Blob {
-          bytes: b"hello".iter().cloned().collect()
+        items["FILE"],
+        Item::Resource {
+          resource: Resource::Blob {
+            bytes: b"hello".iter().cloned().collect()
+          }
         }
       );
     } else {
