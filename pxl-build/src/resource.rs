@@ -40,7 +40,7 @@ impl Resource {
               .data
               .iter()
               .cloned()
-              .map(|subpixel| subpixel as f32 / 255.0)
+              .map(|subpixel| f32::from(subpixel) / 255.0)
           })
           .collect();
         Ok(Resource::Image {
@@ -68,7 +68,7 @@ impl Resource {
       Resource::Blob { bytes } => {
         let bytes = bytes
           .into_iter()
-          .map(|b| LitInt::new(b as u64, IntSuffix::None, Span::call_site()));
+          .map(|b| LitInt::new(u64::from(b), IntSuffix::None, Span::call_site()));
         quote! {
           &[#(#bytes,)*]
         }
@@ -80,10 +80,10 @@ impl Resource {
       } => {
         let pixels = (0..width * height).map(|n| {
           let i = n * 4;
-          let red = LitFloat::new(pixels[i + 0] as f64, FloatSuffix::None, Span::call_site());
-          let green = LitFloat::new(pixels[i + 1] as f64, FloatSuffix::None, Span::call_site());
-          let blue = LitFloat::new(pixels[i + 2] as f64, FloatSuffix::None, Span::call_site());
-          let alpha = LitFloat::new(pixels[i + 3] as f64, FloatSuffix::None, Span::call_site());
+          let red = LitFloat::new(f64::from(pixels[i]), FloatSuffix::None, Span::call_site());
+          let green = LitFloat::new(f64::from(pixels[i + 1]), FloatSuffix::None, Span::call_site());
+          let blue = LitFloat::new(f64::from(pixels[i + 2]), FloatSuffix::None, Span::call_site());
+          let alpha = LitFloat::new(f64::from(pixels[i + 3]), FloatSuffix::None, Span::call_site());
           quote! {
             Pixel {
               red: #red,
