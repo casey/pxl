@@ -169,6 +169,9 @@ pub trait Program: 'static {
   /// rendering pipeline
   ///
   /// Will be called immediately before calling `render()`
+  ///
+  /// See `vertex_shader.glsl` for details of the interface
+  /// that custom vertex shaders should adhere to.
   fn vertex_shader(&self) -> &str {
     include_str!("vertex_shader.glsl")
   }
@@ -177,6 +180,9 @@ pub trait Program: 'static {
   /// rendering pipeline
   ///
   /// Will be called immediately before calling `render()`
+  ///
+  /// See `fragment_shader.glsl` for details of the interface
+  /// that custom fragment shaders should adhere to.
   fn fragment_shader(&self) -> &str {
     include_str!("fragment_shader.glsl")
   }

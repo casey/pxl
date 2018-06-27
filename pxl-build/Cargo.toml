@@ -1,7 +1,9 @@
 [package]
-name = "pxl-build"
-version = "0.0.0"
-authors = ["Casey Rodarmor <casey@rodarmor.com>"]
+name        = "pxl-build"
+version     = "0.0.0"
+authors     = ["Casey Rodarmor <casey@rodarmor.com>"]
+description = "👷‍♀️ A compile-time resource loader for use with the `pxl` crate"
+publish     = false
 
 [dependencies]
 image       = "0.19.0"
