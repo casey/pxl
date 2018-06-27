@@ -83,24 +83,24 @@ impl Speaker {
         match buffer {
           UnknownTypeOutputBuffer::F32(mut buffer) => {
             let mut i = 0;
-            for sample in samples.iter() {
-              buffer[i + 0] = sample.left;
+            for sample in &samples {
+              buffer[i] = sample.left;
               buffer[i + 1] = sample.right;
               i += 2;
             }
           }
           UnknownTypeOutputBuffer::I16(mut buffer) => {
             let mut i = 0;
-            for sample in samples.iter() {
-              buffer[i + 0] = sample.left.to_i16();
+            for sample in &samples {
+              buffer[i] = sample.left.to_i16();
               buffer[i + 1] = sample.right.to_i16();
               i += 2;
             }
           }
           UnknownTypeOutputBuffer::U16(mut buffer) => {
             let mut i = 0;
-            for sample in samples.iter() {
-              buffer[i + 0] = sample.left.to_u16();
+            for sample in &samples {
+              buffer[i] = sample.left.to_u16();
               buffer[i + 1] = sample.right.to_u16();
               i += 2;
             }

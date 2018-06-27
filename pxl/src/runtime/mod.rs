@@ -87,8 +87,8 @@ impl Runtime {
 
       self.window_event_loop.poll_events(|event| {
         use self::glutin::WindowEvent::*;
-        match event {
-          glutin::Event::WindowEvent { event, .. } => match event {
+        if let glutin::Event::WindowEvent { event, .. } = event {
+          match event {
             CloseRequested => should_quit = true,
             Resized(w, h) => new_size = Some((w, h)),
             KeyboardInput { input, .. } => if let Some(virtual_keycode) = input.virtual_keycode {
@@ -111,8 +111,7 @@ impl Runtime {
             },
             ReceivedCharacter(character) => events.push(Event::Key { character }),
             _ => (),
-          },
-          _ => (),
+          }
         }
       });
 

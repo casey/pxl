@@ -47,7 +47,7 @@ impl Module {
         .to_str()
         .ok_or_else(|| Error::NonUnicodePath { path: path.clone() })?;
 
-      if stem.starts_with(".") {
+      if stem.starts_with('.') {
         continue;
       }
 
@@ -75,7 +75,7 @@ impl Module {
         return Err(Error::ConflictingIdentifiers {
           a,
           b: path.clone(),
-          identifier: identifier,
+          identifier,
         });
       }
 
@@ -89,14 +89,12 @@ impl Module {
         Item::Module {
           module: Module::from_path(&path)?,
         }
-      } else {
-        if let Some(extension) = extension {
-          Item::Resource {
-            resource: Resource::from_path_and_extension(&path, extension)?,
-          }
-        } else {
-          return Err(Error::MissingExtension { path: path.clone() });
+      } else if let Some(extension) = extension {
+        Item::Resource {
+          resource: Resource::from_path_and_extension(&path, extension)?,
         }
+      } else {
+        return Err(Error::MissingExtension { path: path.clone() });
       };
       items.insert(identifier, item);
     }

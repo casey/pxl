@@ -48,7 +48,7 @@ impl Display {
       gl::BufferData(
         gl::ARRAY_BUFFER,
         (VERTICES.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
-        mem::transmute(&VERTICES[0]),
+        &VERTICES[0] as *const f32 as *const std::os::raw::c_void,
         gl::STATIC_DRAW,
       );
     }
@@ -92,14 +92,15 @@ impl Display {
     if self.shader_program != shader_program {
       unsafe {
         gl::UseProgram(shader_program);
-        gl::BindFragDataLocation(shader_program, 0, CString::new("color").unwrap().as_ptr());
+        let zcolor = CString::new("color").unwrap();
+        gl::BindFragDataLocation(shader_program, 0, zcolor.as_ptr());
 
-        let pixel_uniform =
-          gl::GetUniformLocation(shader_program, CString::new("pixels").unwrap().as_ptr());
+        let zpixels = CString::new("pixels").unwrap();
+        let pixel_uniform = gl::GetUniformLocation(shader_program, zpixels.as_ptr());
         gl::Uniform1i(pixel_uniform, 0);
 
-        let pos_attr =
-          gl::GetAttribLocation(shader_program, CString::new("position").unwrap().as_ptr());
+        let zposition = CString::new("position").unwrap();
+        let pos_attr = gl::GetAttribLocation(shader_program, zposition.as_ptr());
         gl::EnableVertexAttribArray(pos_attr as GLuint);
         gl::VertexAttribPointer(
           pos_attr as GLuint,
@@ -159,11 +160,11 @@ impl Display {
       gl::CompileShader(shader);
 
       // Get the compile status
-      let mut status = gl::FALSE as GLint;
+      let mut status = GLint::from(gl::FALSE);
       gl::GetShaderiv(shader, gl::COMPILE_STATUS, &mut status);
 
       // Fail on error
-      if status != (gl::TRUE as GLint) {
+      if status != (GLint::from(gl::TRUE)) {
         let mut len = 0;
         gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut len);
         let mut buf = Vec::with_capacity(len as usize);
@@ -200,11 +201,11 @@ impl Display {
       gl::AttachShader(program, fs);
       gl::LinkProgram(program);
       // Get the link status
-      let mut status = gl::FALSE as GLint;
+      let mut status = GLint::from(gl::FALSE);
       gl::GetProgramiv(program, gl::LINK_STATUS, &mut status);
 
       // Fail on error
-      if status != (gl::TRUE as GLint) {
+      if status != GLint::from(gl::TRUE) {
         let mut len: GLint = 0;
         gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &mut len);
         let mut buf = Vec::with_capacity(len as usize);
