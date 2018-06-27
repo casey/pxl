@@ -1,8 +1,12 @@
 # run all tests
 default: test
 
-# prepare for submitting a pull request
-preflight: fmt clippy test
+# submit a pull request
+pr: fmt clippy test
+	git branch | grep '^ *master'
+	git diff --exit-code
+	git diff --cached --exit-code
+	git push github
 
 # run all tests
 test:
