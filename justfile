@@ -1,7 +1,8 @@
 # run all tests
 default: test
 
-lint: fmt clippy test
+# prepare for submitting a pull request
+preflight: fmt clippy test
 
 # run all tests
 test:
