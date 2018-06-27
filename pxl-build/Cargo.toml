@@ -11,10 +11,10 @@ documentation = "https://docs.rs/pxl-build"
 [dependencies]
 image       = "0.19.0"
 lazy_static = "1.0.1"
-proc-macro2 = "0.3.8"
-quote       = "0.5.2"
+proc-macro2 = "0.4.6"
+quote       = "0.6.3"
 regex       = "1.0.1"
-syn         = "0.13.10"
+syn         = "0.14.2"
 palette     = "0.4.0"
 
 [dev-dependencies]
