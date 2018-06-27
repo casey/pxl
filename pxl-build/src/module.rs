@@ -102,9 +102,9 @@ impl Module {
     Ok(Module { items })
   }
 
-  pub fn tokens(self) -> Tokens {
+  pub fn tokens(self) -> TokenStream {
     let items = self.items.into_iter().map(|(identifier, item)| {
-      let ident = Ident::from(identifier);
+      let ident = Ident::new(&identifier, Span::call_site());
       match item {
         Item::Resource { resource } => {
           let type_tokens = resource.type_tokens();

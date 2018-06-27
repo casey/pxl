@@ -23,6 +23,10 @@ fmt:
 watch:
 	cargo watch --clear --exec fmt --exec check
 
+# check for out-of-date dependencies
+outdated:
+	cargo outdated
+
 # everyone's favorite animate paper clip
 clippy:
 	cargo +nightly clippy

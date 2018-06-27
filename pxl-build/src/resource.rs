@@ -56,14 +56,14 @@ impl Resource {
     }
   }
 
-  pub fn type_tokens(&self) -> Tokens {
+  pub fn type_tokens(&self) -> TokenStream {
     match self {
       Resource::Blob { .. } => quote!(&[u8]),
       Resource::Image { .. } => quote!(Image),
     }
   }
 
-  pub fn tokens(self) -> Tokens {
+  pub fn tokens(self) -> TokenStream {
     match self {
       Resource::Blob { bytes } => {
         let bytes = bytes
