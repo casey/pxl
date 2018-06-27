@@ -19,7 +19,7 @@
 //!
 //! Then, in your program, you can do:
 //!
-//! ```ignore
+//! ```rust,ignore
 //! extern crate pxl;
 //!
 //! include!(concat!(env!("OUT_DIR"), "/resources.rs"));
