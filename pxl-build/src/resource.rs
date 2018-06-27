@@ -81,9 +81,21 @@ impl Resource {
         let pixels = (0..width * height).map(|n| {
           let i = n * 4;
           let red = LitFloat::new(f64::from(pixels[i]), FloatSuffix::None, Span::call_site());
-          let green = LitFloat::new(f64::from(pixels[i + 1]), FloatSuffix::None, Span::call_site());
-          let blue = LitFloat::new(f64::from(pixels[i + 2]), FloatSuffix::None, Span::call_site());
-          let alpha = LitFloat::new(f64::from(pixels[i + 3]), FloatSuffix::None, Span::call_site());
+          let green = LitFloat::new(
+            f64::from(pixels[i + 1]),
+            FloatSuffix::None,
+            Span::call_site(),
+          );
+          let blue = LitFloat::new(
+            f64::from(pixels[i + 2]),
+            FloatSuffix::None,
+            Span::call_site(),
+          );
+          let alpha = LitFloat::new(
+            f64::from(pixels[i + 3]),
+            FloatSuffix::None,
+            Span::call_site(),
+          );
           quote! {
             Pixel {
               red: #red,

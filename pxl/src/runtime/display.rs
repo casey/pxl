@@ -96,8 +96,7 @@ impl Display {
         gl::BindFragDataLocation(shader_program, 0, zcolor.as_ptr());
 
         let zpixels = CString::new("pixels").unwrap();
-        let pixel_uniform =
-          gl::GetUniformLocation(shader_program, zpixels.as_ptr());
+        let pixel_uniform = gl::GetUniformLocation(shader_program, zpixels.as_ptr());
         gl::Uniform1i(pixel_uniform, 0);
 
         let zposition = CString::new("position").unwrap();
