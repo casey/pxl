@@ -10,16 +10,12 @@ pub static VERTICES: [GLfloat; 24] = [
 ];
 
 pub struct Display {
-  fragment_shader: u32,
   shader_program: u32,
   texture: u32,
   vao: u32,
   vbo: u32,
-  vertex_shader: u32,
-  vertex_shader_cache: HashMap<String, u32>,
-  fragment_shader_cache: HashMap<String, u32>,
-  shader_program_cache: HashMap<(u32, u32), u32>,
   shader_cache: ShaderCache,
+  frame: u64,
 }
 
 impl Display {
@@ -54,12 +50,8 @@ impl Display {
 
     Ok(Display {
       shader_cache: ShaderCache::new(),
-      vertex_shader_cache: HashMap::new(),
-      fragment_shader_cache: HashMap::new(),
-      shader_program_cache: HashMap::new(),
-      fragment_shader: 0,
       shader_program: 0,
-      vertex_shader: 0,
+      frame: 0,
       texture,
       vao,
       vbo,
@@ -70,87 +62,27 @@ impl Display {
     &mut self,
     vertex_shader_source: &str,
     fragment_shader_source: &str,
-    _filter_shader_sources: &[&str],
+    filter_shader_sources: &[&str],
   ) -> Result<(), Error> {
-    // Compile vertex shader
-    let vertex_shader = Self::compile_shader(
-      vertex_shader_source,
-      gl::VERTEX_SHADER,
-      &mut self.vertex_shader_cache,
-    )?;
+    let shader_program = self
+      .shader_cache
+      .compile_program(vertex_shader_source, fragment_shader_source)?;
 
-    // Compile fragment shader
-    let fragment_shader = Self::compile_shader(
-      fragment_shader_source,
-      gl::FRAGMENT_SHADER,
-      &mut self.fragment_shader_cache,
-    )?;
-
-    // Link shader program
-    let shader_program = Self::link_program(
-      vertex_shader,
-      fragment_shader,
-      vertex_shader_source,
-      fragment_shader_source,
-      &mut self.shader_program_cache,
-    )?;
-
-    /*
-    // compile filter shaders
-    for filter_shader_source in filter_shader_sources {
-      // TODO: refactor this so it's a single function
-      //       that takes all caches. or maybe create a
-      //       shader cache object and make it a method
-      //       on that.
-      // TODO: do I need to set attributes/etc every time
-      //       i switch programs, or just once the first
-      //       time i load them?
-      let filter_shader = Self::compile_shader(
-        filter_shader_source,
-        gl::FRAGMENT_SHADER,
-        &mut self.fragment_shader_cache,
-      )?;
-
-      // Link filter shader program
-      let _filter_shader_program = Self::link_program(
-        vertex_shader,
-        filter_shader,
-        vertex_shader_source,
-        filter_shader_source,
-        &mut self.shader_program_cache,
-      )?;
-    }
-    */
-
-    if self.shader_program != shader_program {
+    if shader_program != self.shader_program {
       unsafe {
         gl::UseProgram(shader_program);
-        let zcolor = CString::new("color").unwrap();
-        gl::BindFragDataLocation(shader_program, 0, zcolor.as_ptr());
-
-        let zpixels = CString::new("pixels").unwrap();
-        let pixel_uniform = gl::GetUniformLocation(shader_program, zpixels.as_ptr());
-        gl::Uniform1i(pixel_uniform, 0);
-
-        let zposition = CString::new("position").unwrap();
-        let pos_attr = gl::GetAttribLocation(shader_program, zposition.as_ptr());
-        gl::EnableVertexAttribArray(pos_attr as GLuint);
-        gl::VertexAttribPointer(
-          pos_attr as GLuint,
-          4,
-          gl::FLOAT,
-          gl::FALSE as GLboolean,
-          0,
-          ptr::null(),
-        );
       }
-
       self.shader_program = shader_program;
     }
+
+    for _filter_shader_source in filter_shader_sources {
+      // TODO: WHICH vertex shader?
+    }
+
     Ok(())
   }
 
-  pub fn present(&self, pixels: &[Pixel], dimensions: (usize, usize)) {
+  pub fn present(&mut self, pixels: &[Pixel], dimensions: (usize, usize)) {
     let pixels = pixels.as_ptr();
     let bytes = pixels as *const c_void;
 
@@ -172,117 +104,22 @@ impl Display {
 
       gl::DrawArrays(gl::TRIANGLES, 0, 6);
 
-      #[cfg(debug_assertions)]
-      assert_eq!(gl::GetError(), gl::NO_ERROR);
-    }
-  }
-
-  fn compile_shader(
-    source: &str,
-    ty: GLenum,
-    shader_cache: &mut HashMap<String, GLuint>,
-  ) -> Result<GLuint, Error> {
-    if let Some(shader) = shader_cache.get(source).cloned() {
-      return Ok(shader);
-    }
-
-    unsafe {
-      let shader = gl::CreateShader(ty);
-      let c_str = CString::new(source.as_bytes()).unwrap();
-      gl::ShaderSource(shader, 1, &c_str.as_ptr(), ptr::null());
-      gl::CompileShader(shader);
-
-      // Get the compile status
-      let mut status = GLint::from(gl::FALSE);
-      gl::GetShaderiv(shader, gl::COMPILE_STATUS, &mut status);
-
-      // Fail on error
-      if status != (GLint::from(gl::TRUE)) {
-        let mut len = 0;
-        gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut len);
-        let mut buf = Vec::with_capacity(len as usize);
-        buf.set_len((len as usize) - 1); // subtract 1 to skip the trailing null character
-        gl::GetShaderInfoLog(
-          shader,
-          len,
-          ptr::null_mut(),
-          buf.as_mut_ptr() as *mut GLchar,
-        );
-        let info_log = String::from_utf8_lossy(&buf).to_string();
-        let source = source.to_string();
-        return Err(if ty == gl::FRAGMENT_SHADER {
-          Error::FragmentShaderCompilation { source, info_log }
-        } else {
-          Error::VertexShaderCompilation { source, info_log }
-        });
+      if self.frame == 0 {
+        assert_eq!(gl::GetError(), gl::NO_ERROR);
       }
-
-      shader_cache.insert(source.to_string(), shader);
-
-      Ok(shader)
-    }
-  }
-
-  fn link_program(
-    vs: GLuint,
-    fs: GLuint,
-    vertex_shader_source: &str,
-    fragment_shader_source: &str,
-    program_cache: &mut HashMap<(GLuint, GLuint), GLuint>,
-  ) -> Result<GLuint, Error> {
-    let cache_key = (vs, fs);
-
-    if let Some(program) = program_cache.get(&cache_key).cloned() {
-      return Ok(program);
     }
 
-    unsafe {
-      let program = gl::CreateProgram();
-      gl::AttachShader(program, vs);
-      gl::AttachShader(program, fs);
-      gl::LinkProgram(program);
-      // Get the link status
-      let mut status = GLint::from(gl::FALSE);
-      gl::GetProgramiv(program, gl::LINK_STATUS, &mut status);
-
-      // Fail on error
-      if status != GLint::from(gl::TRUE) {
-        let mut len: GLint = 0;
-        gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &mut len);
-        let mut buf = Vec::with_capacity(len as usize);
-        buf.set_len((len as usize) - 1); // subtract 1 to skip the trailing null character
-        gl::GetProgramInfoLog(
-          program,
-          len,
-          ptr::null_mut(),
-          buf.as_mut_ptr() as *mut GLchar,
-        );
-        let info_log = String::from_utf8_lossy(&buf).to_string();
-        let vertex_shader_source = vertex_shader_source.to_string();
-        let fragment_shader_source = fragment_shader_source.to_string();
-        return Err(Error::ShaderProgramLinking {
-          info_log,
-          vertex_shader_source,
-          fragment_shader_source,
-        });
-      }
-
-      program_cache.insert(cache_key, program);
-
-      Ok(program)
-    }
+    self.frame += 1;
   }
 }
 
 impl Drop for Display {
   fn drop(&mut self) {
     unsafe {
-      gl::DeleteProgram(self.shader_program);
-      gl::DeleteShader(self.fragment_shader);
-      gl::DeleteShader(self.vertex_shader);
       gl::DeleteTextures(1, &self.texture);
       gl::DeleteBuffers(1, &self.vbo);
       gl::DeleteVertexArrays(1, &self.vao);
+      assert_eq!(gl::GetError(), gl::NO_ERROR);
     }
   }
 }
