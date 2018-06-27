@@ -1,3 +1,5 @@
+//! Input and window handling
+
 extern crate cpal;
 extern crate gl;
 extern crate glutin;

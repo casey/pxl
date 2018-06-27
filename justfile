@@ -1,16 +1,25 @@
+# run all tests
 default: test
 
+# run all tests
 test:
 	cargo test
 
+# format rust sourcecode with rustfmt
+fmt:
+	cargo fmt
+
+# everyone's favorite animate paper clip
+clippy:
+	cargo +nightly clippy
+
+# run the conway's game of life example
 life:
 	cargo run --release --example life
 
+# run the custom shader example
 shaders:
 	cargo run --release --example shaders
-
-fmt:
-	cargo fmt
 
 # clean up the feature branch named BRANCH
 done BRANCH:

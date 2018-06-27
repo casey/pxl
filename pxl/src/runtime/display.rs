@@ -1,3 +1,5 @@
+//! Graphics rendering for the native OpenGl-based runtime
+
 use super::*;
 
 use runtime::gl::types::*;

@@ -1,3 +1,5 @@
+//! Conway's game of life using the pxl framework
+
 extern crate pxl;
 extern crate rand;
 

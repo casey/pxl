@@ -1,7 +1,12 @@
 [workspace]
 
+description = "A workspace containing pxl and related crates"
+
 members = [
+  # The main pxl crate. Start here!
   "pxl",
+  # A compile-time resource loader for pxl
   "pxl-build",
+  # Tests for `pxl-build`
   "pxl-build-test",
 ]

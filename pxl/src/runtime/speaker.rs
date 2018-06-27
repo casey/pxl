@@ -1,3 +1,5 @@
+//! Audio playback
+
 use std::sync::{Arc, Mutex};
 
 use {
