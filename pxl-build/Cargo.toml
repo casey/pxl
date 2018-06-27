@@ -1,6 +1,6 @@
 [package]
 name          = "pxl-build"
-version       = "0.0.0"
+version       = "0.0.9"
 authors       = ["Casey Rodarmor <casey@rodarmor.com>"]
 description   = "👷‍♀️ A compile-time resource loader for use with the `pxl` crate"
 license       = "CC0-1.0"
@@ -19,4 +19,4 @@ palette     = "0.4.0"
 
 [dev-dependencies]
 tempfile = "3.0.2"
-pxl      = {path = "../pxl", version = "0.0.8"}
+pxl      = {path = "../pxl", version = "0.0.9"}
