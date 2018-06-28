@@ -13,9 +13,9 @@ impl Program for Blaster {
     (256, 256)
   }
 
-  fn filter_shaders(&self) -> &[&str] {
-    &[]
-  }
+  // fn filter_shaders(&self) -> &[&str] {
+  //   &[]
+  // }
 
   fn render(&mut self, pixels: &mut [Pixel]) {
     for (i, pixel) in pixels.iter_mut().enumerate() {

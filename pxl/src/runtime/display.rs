@@ -15,9 +15,10 @@ static DEFAULT_FRAGMENT_SHADER: &str = include_str!("../fragment_shader.glsl");
 
 pub struct Display {
   shader_program: u32,
+  pixel_texture: u32,
   passthrough_program: u32,
   filter_shader_programs: Vec<u32>,
-  textures: Vec<u32>,
+  framebuffer_textures: Vec<u32>,
   framebuffers: Vec<u32>,
   vao: u32,
   vbo: u32,
@@ -48,10 +49,23 @@ impl Display {
       );
     }
 
-    let mut textures = vec![0, 0];
+    let mut pixel_texture = 0;
     unsafe {
-      gl::GenTextures(textures.len() as i32, textures.as_mut_ptr());
-      for texture in textures.iter().cloned() {
+      gl::GenTextures(1, &mut pixel_texture);
+      gl::BindTexture(gl::TEXTURE_2D, pixel_texture);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+    }
+
+    let mut framebuffer_textures = vec![0, 0];
+    unsafe {
+      gl::GenTextures(
+        framebuffer_textures.len() as i32,
+        framebuffer_textures.as_mut_ptr(),
+      );
+      for texture in framebuffer_textures.iter().cloned() {
         gl::BindTexture(gl::TEXTURE_2D, texture);
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
@@ -61,8 +75,8 @@ impl Display {
           gl::TEXTURE_2D,
           0,
           gl::RGBA32F as i32,
-          1024,
-          1024,
+          1,
+          1,
           0,
           gl::RGBA,
           gl::FLOAT,
@@ -76,15 +90,16 @@ impl Display {
       gl::GenFramebuffers(framebuffers.len() as i32, framebuffers.as_mut_ptr());
     }
 
-    for (framebuffer, texture) in framebuffers.iter().cloned().zip(textures.iter().cloned()) {
+    for (framebuffer, texture) in framebuffers
+      .iter()
+      .cloned()
+      .zip(framebuffer_textures.iter().cloned())
+    {
       unsafe {
         gl::BindFramebuffer(gl::FRAMEBUFFER, framebuffer);
         gl::FramebufferTexture(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, texture, 0);
         let draw_buffers: [u32; 1] = [gl::COLOR_ATTACHMENT0];
         gl::DrawBuffers(draw_buffers.len() as i32, (&draw_buffers).as_ptr());
-        if gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE {
-          panic!("Failed to prepare framebuffer");
-        }
       }
     }
 
@@ -98,8 +113,9 @@ impl Display {
       filter_shader_programs: Vec::new(),
       passthrough_program,
       frame: 0,
+      pixel_texture,
       shader_cache,
-      textures,
+      framebuffer_textures,
       framebuffers,
       vao,
       vbo,
@@ -146,16 +162,29 @@ impl Display {
         self.filter_shader_programs[pass - 1]
       };
 
-      let input_texture = self.textures[input_index];
+      let input_texture = self.framebuffer_textures[input_index];
       let output_framebuffer = self.framebuffers[output_index];
+      let output_texture = self.framebuffer_textures[output_index];
 
       unsafe {
         gl::UseProgram(program);
 
-        gl::BindTexture(gl::TEXTURE_2D, input_texture);
-        gl::ActiveTexture(gl::TEXTURE0);
+        gl::BindTexture(gl::TEXTURE_2D, output_texture);
+        gl::TexImage2D(
+          gl::TEXTURE_2D,
+          0,
+          gl::RGBA32F as i32,
+          dimensions.0 as i32,
+          dimensions.1 as i32,
+          0,
+          gl::RGBA,
+          gl::FLOAT,
+          0 as *const c_void,
+        );
 
         if first {
+          gl::BindTexture(gl::TEXTURE_2D, self.pixel_texture);
+          gl::ActiveTexture(gl::TEXTURE0);
           gl::TexImage2D(
             gl::TEXTURE_2D,
             0,
@@ -167,29 +196,52 @@ impl Display {
             gl::FLOAT,
             bytes,
           );
+        } else {
+          unimplemented!();
         }
 
         gl::BindFramebuffer(gl::FRAMEBUFFER, output_framebuffer);
+
+        if gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE {
+          panic!("Failed to prepare framebuffer");
+        }
+
+        gl::Viewport(0, 0, dimensions.0 as i32, dimensions.1 as i32);
+        // gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
         gl::Clear(gl::COLOR_BUFFER_BIT);
         gl::DrawArrays(gl::TRIANGLES, 0, 6);
       }
 
-      input_index = (input_index + 1) % 2;
-      output_index = (output_index + 1) % 2;
+      mem::swap(&mut input_index, &mut output_index);
+      break;
     }
 
-    let input_texture = self.textures[input_index];
+    let input_texture = self.framebuffer_textures[input_index];
 
     unsafe {
       gl::UseProgram(self.passthrough_program);
-
       gl::BindTexture(gl::TEXTURE_2D, input_texture);
+      /*
+      gl::TexImage2D(
+        gl::TEXTURE_2D,
+        0,
+        gl::RGBA32F as i32,
+        dimensions.0 as i32,
+        dimensions.1 as i32,
+        0,
+        gl::RGBA,
+        gl::FLOAT,
+        bytes,
+      );
+      */
       gl::ActiveTexture(gl::TEXTURE0);
-
       gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+      gl::Viewport(0, 0, dimensions.0 as i32, dimensions.1 as i32);
       gl::Clear(gl::COLOR_BUFFER_BIT);
       gl::DrawArrays(gl::TRIANGLES, 0, 6);
+    }
 
+    unsafe {
       if self.frame == 0 {
         assert_eq!(gl::GetError(), gl::NO_ERROR);
       }
@@ -202,7 +254,10 @@ impl Display {
 impl Drop for Display {
   fn drop(&mut self) {
     unsafe {
-      gl::DeleteTextures(self.textures.len() as i32, self.textures.as_mut_ptr());
+      gl::DeleteTextures(
+        self.framebuffer_textures.len() as i32,
+        self.framebuffer_textures.as_mut_ptr(),
+      );
       gl::DeleteFramebuffers(
         self.framebuffers.len() as i32,
         self.framebuffers.as_mut_ptr(),
