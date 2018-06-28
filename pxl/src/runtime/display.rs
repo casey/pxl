@@ -71,17 +71,6 @@ impl Display {
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
-        gl::TexImage2D(
-          gl::TEXTURE_2D,
-          0,
-          gl::RGBA32F as i32,
-          1,
-          1,
-          0,
-          gl::RGBA,
-          gl::FLOAT,
-          0 as *const c_void,
-        );
       }
     }
 
@@ -111,8 +100,8 @@ impl Display {
     Ok(Display {
       shader_program: 0,
       filter_shader_programs: Vec::new(),
-      passthrough_program,
       frame: 0,
+      passthrough_program,
       pixel_texture,
       shader_cache,
       framebuffer_textures,
@@ -144,7 +133,7 @@ impl Display {
     Ok(())
   }
 
-  pub fn present(&mut self, pixels: &[Pixel], dimensions: (usize, usize)) {
+  pub fn present(&mut self, pixels: &[Pixel], dimensions: (usize, usize), window_size: (u32, u32)) {
     let pixels = pixels.as_ptr();
     let bytes = pixels as *const c_void;
 
@@ -197,23 +186,24 @@ impl Display {
             bytes,
           );
         } else {
-          unimplemented!();
+          gl::BindTexture(gl::TEXTURE_2D, input_texture);
+          gl::ActiveTexture(gl::TEXTURE0);
         }
 
         gl::BindFramebuffer(gl::FRAMEBUFFER, output_framebuffer);
 
-        if gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE {
-          panic!("Failed to prepare framebuffer");
+        if self.frame == 0 {
+          if gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE {
+            panic!("Failed to prepare framebuffer");
+          }
         }
 
-        gl::Viewport(0, 0, dimensions.0 as i32, dimensions.1 as i32);
-        // gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
         gl::Clear(gl::COLOR_BUFFER_BIT);
+        gl::Viewport(0, 0, dimensions.0 as i32, dimensions.1 as i32);
         gl::DrawArrays(gl::TRIANGLES, 0, 6);
       }
 
       mem::swap(&mut input_index, &mut output_index);
-      break;
     }
 
     let input_texture = self.framebuffer_textures[input_index];
@@ -221,22 +211,9 @@ impl Display {
     unsafe {
       gl::UseProgram(self.passthrough_program);
       gl::BindTexture(gl::TEXTURE_2D, input_texture);
-      /*
-      gl::TexImage2D(
-        gl::TEXTURE_2D,
-        0,
-        gl::RGBA32F as i32,
-        dimensions.0 as i32,
-        dimensions.1 as i32,
-        0,
-        gl::RGBA,
-        gl::FLOAT,
-        bytes,
-      );
-      */
       gl::ActiveTexture(gl::TEXTURE0);
       gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
-      gl::Viewport(0, 0, dimensions.0 as i32, dimensions.1 as i32);
+      gl::Viewport(0, 0, window_size.0 as i32, window_size.1 as i32);
       gl::Clear(gl::COLOR_BUFFER_BIT);
       gl::DrawArrays(gl::TRIANGLES, 0, 6);
     }

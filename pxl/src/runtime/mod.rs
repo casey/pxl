@@ -141,7 +141,9 @@ impl Runtime {
         self.current_title.push_str(&title);
       }
 
-      self.display.present(&self.pixels, dimensions);
+      if let Some(inner_size) = self.gl_window.get_inner_size() {
+        self.display.present(&self.pixels, dimensions, inner_size);
+      }
 
       self.gl_window.swap_buffers()?;
     }
