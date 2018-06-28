@@ -11,8 +11,8 @@ use std::{
 
 use Cell::*;
 
-const WIDTH: usize = 1024;
-const HEIGHT: usize = 1024;
+const WIDTH: usize = 512;
+const HEIGHT: usize = 512;
 const TAU: f64 = f64::consts::PI * 2.0;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -161,9 +161,9 @@ impl Program for Life {
     for (pixel, cell) in pixels.iter_mut().zip(&self.cells) {
       *pixel = match cell {
         Alive => Pixel {
-          red: random(),
-          green: random(),
-          blue: random(),
+          red: 1.0,
+          green: 1.0,
+          blue: 1.0,
           alpha: 1.0,
         },
         Dead => Pixel {
@@ -178,6 +178,10 @@ impl Program for Life {
 
   fn synthesizer(&self) -> Option<Arc<Mutex<Synthesizer>>> {
     Some(self.synthesizer.clone())
+  }
+
+  fn filter_shaders(&self) -> &[&str] {
+    &[]
   }
 
   fn fragment_shader(&self) -> &str {

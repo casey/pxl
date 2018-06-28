@@ -14,10 +14,10 @@ out vec4 color;
 
 // A texture sampler containing the pixels written by
 // the last call to `pxl::Program::render`
-uniform sampler2D pixels;
+uniform sampler2D source;
 
 void main() {
   // Look up the color in the `pixels` texture at coordinates `uv`
   // and use them to set the output color of this fragment.
-  color = texture(pixels, uv);
+  color = texture(source, uv);
 }

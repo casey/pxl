@@ -1,39 +1,35 @@
 //! Graphics rendering for the native OpenGl-based runtime
 
-use super::*;
+use runtime::common::*;
 
-use runtime::gl::types::*;
+use runtime::gl;
 
-use std::collections::HashMap;
-
-pub static VERTICES: [GLfloat; 24] = [
+static VERTICES: [GLfloat; 24] = [
   -1.0, 1.0, 0.0, 1.0, 1.0, -1.0, 0.0, 1.0, -1.0, -1.0, 0.0, 1.0, -1.0, 1.0, 0.0, 1.0, 1.0, -1.0,
   0.0, 1.0, 1.0, 1.0, 0.0, 1.0,
 ];
 
+static DEFAULT_VERTEX_SHADER: &str = include_str!("../vertex_shader.glsl");
+
+static DEFAULT_FRAGMENT_SHADER: &str = include_str!("../fragment_shader.glsl");
+
 pub struct Display {
-  fragment_shader: u32,
   shader_program: u32,
-  texture: u32,
+  pixel_texture: u32,
+  passthrough_program: u32,
+  filter_shader_programs: Vec<u32>,
+  framebuffer_textures: Vec<u32>,
+  framebuffers: Vec<u32>,
   vao: u32,
   vbo: u32,
-  vertex_shader: u32,
-  vertex_shader_cache: HashMap<String, u32>,
-  fragment_shader_cache: HashMap<String, u32>,
-  shader_program_cache: HashMap<(u32, u32), u32>,
+  shader_cache: ShaderCache,
+  frame: u64,
 }
 
 impl Display {
   pub fn new() -> Result<Display, Error> {
-    let mut texture = 0;
     unsafe {
-      gl::GenTextures(1, &mut texture);
-      gl::BindTexture(gl::TEXTURE_2D, texture);
-      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
-      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
-      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
-      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
-      gl::ActiveTexture(gl::TEXTURE0);
+      gl::ClearColor(0.0, 0.0, 0.0, 1.0);
     }
 
     let mut vao = 0;
@@ -48,19 +44,68 @@ impl Display {
       gl::BufferData(
         gl::ARRAY_BUFFER,
         (VERTICES.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
-        &VERTICES[0] as *const f32 as *const std::os::raw::c_void,
+        &VERTICES[0] as *const f32 as *const c_void,
         gl::STATIC_DRAW,
       );
     }
 
+    let mut pixel_texture = 0;
+    unsafe {
+      gl::GenTextures(1, &mut pixel_texture);
+      gl::BindTexture(gl::TEXTURE_2D, pixel_texture);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+    }
+
+    let mut framebuffer_textures = vec![0, 0];
+    unsafe {
+      gl::GenTextures(
+        framebuffer_textures.len() as i32,
+        framebuffer_textures.as_mut_ptr(),
+      );
+      for texture in framebuffer_textures.iter().cloned() {
+        gl::BindTexture(gl::TEXTURE_2D, texture);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+      }
+    }
+
+    let mut framebuffers = vec![0, 0];
+    unsafe {
+      gl::GenFramebuffers(framebuffers.len() as i32, framebuffers.as_mut_ptr());
+    }
+
+    for (framebuffer, texture) in framebuffers
+      .iter()
+      .cloned()
+      .zip(framebuffer_textures.iter().cloned())
+    {
+      unsafe {
+        gl::BindFramebuffer(gl::FRAMEBUFFER, framebuffer);
+        gl::FramebufferTexture(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, texture, 0);
+        let draw_buffers: [u32; 1] = [gl::COLOR_ATTACHMENT0];
+        gl::DrawBuffers(draw_buffers.len() as i32, (&draw_buffers).as_ptr());
+      }
+    }
+
+    let mut shader_cache = ShaderCache::new();
+
+    let passthrough_program =
+      shader_cache.compile_program(DEFAULT_VERTEX_SHADER, DEFAULT_FRAGMENT_SHADER)?;
+
     Ok(Display {
-      vertex_shader_cache: HashMap::new(),
-      fragment_shader_cache: HashMap::new(),
-      shader_program_cache: HashMap::new(),
-      fragment_shader: 0,
       shader_program: 0,
-      vertex_shader: 0,
-      texture,
+      filter_shader_programs: Vec::new(),
+      frame: 0,
+      passthrough_program,
+      pixel_texture,
+      shader_cache,
+      framebuffer_textures,
+      framebuffers,
       vao,
       vbo,
     })
@@ -70,171 +115,133 @@ impl Display {
     &mut self,
     vertex_shader_source: &str,
     fragment_shader_source: &str,
+    filter_shader_sources: &[&str],
   ) -> Result<(), Error> {
-    let vertex_shader = Self::compile_shader(
-      vertex_shader_source,
-      gl::VERTEX_SHADER,
-      &mut self.vertex_shader_cache,
-    ).map_err(|info_log| Error::VertexShaderCompilation { info_log })?;
+    self.shader_program = self
+      .shader_cache
+      .compile_program(vertex_shader_source, fragment_shader_source)?;
 
-    let fragment_shader = Self::compile_shader(
-      fragment_shader_source,
-      gl::FRAGMENT_SHADER,
-      &mut self.fragment_shader_cache,
-    ).map_err(|info_log| Error::FragmentShaderCompilation { info_log })?;
+    self.filter_shader_programs = filter_shader_sources
+      .iter()
+      .map(|filter_shader_source| {
+        self
+          .shader_cache
+          .compile_program(DEFAULT_VERTEX_SHADER, filter_shader_source)
+      })
+      .collect::<Result<Vec<u32>, Error>>()?;
 
-    let shader_program = Self::link_program(
-      vertex_shader,
-      fragment_shader,
-      &mut self.shader_program_cache,
-    ).map_err(|info_log| Error::ShaderProgramLinking { info_log })?;
-
-    if self.shader_program != shader_program {
-      unsafe {
-        gl::UseProgram(shader_program);
-        let zcolor = CString::new("color").unwrap();
-        gl::BindFragDataLocation(shader_program, 0, zcolor.as_ptr());
-
-        let zpixels = CString::new("pixels").unwrap();
-        let pixel_uniform = gl::GetUniformLocation(shader_program, zpixels.as_ptr());
-        gl::Uniform1i(pixel_uniform, 0);
-
-        let zposition = CString::new("position").unwrap();
-        let pos_attr = gl::GetAttribLocation(shader_program, zposition.as_ptr());
-        gl::EnableVertexAttribArray(pos_attr as GLuint);
-        gl::VertexAttribPointer(
-          pos_attr as GLuint,
-          4,
-          gl::FLOAT,
-          gl::FALSE as GLboolean,
-          0,
-          ptr::null(),
-        );
-      }
-
-      self.shader_program = shader_program;
-    }
     Ok(())
   }
 
-  pub fn present(&self, pixels: &[Pixel], dimensions: (usize, usize)) {
+  pub fn present(&mut self, pixels: &[Pixel], dimensions: (usize, usize), window_size: (u32, u32)) {
     let pixels = pixels.as_ptr();
-    let bytes = pixels as *const std::os::raw::c_void;
+    let bytes = pixels as *const c_void;
+
+    let pass_count = self.filter_shader_programs.len() + 1;
+
+    let mut input_index = 0;
+    let mut output_index = 1;
+
+    for pass in 0..pass_count {
+      let first = pass == 0;
+
+      let program = if first {
+        self.shader_program
+      } else {
+        self.filter_shader_programs[pass - 1]
+      };
+
+      let input_texture = self.framebuffer_textures[input_index];
+      let output_framebuffer = self.framebuffers[output_index];
+      let output_texture = self.framebuffer_textures[output_index];
+
+      unsafe {
+        gl::UseProgram(program);
+
+        gl::BindTexture(gl::TEXTURE_2D, output_texture);
+        gl::TexImage2D(
+          gl::TEXTURE_2D,
+          0,
+          gl::RGBA32F as i32,
+          dimensions.0 as i32,
+          dimensions.1 as i32,
+          0,
+          gl::RGBA,
+          gl::FLOAT,
+          0 as *const c_void,
+        );
+
+        if first {
+          gl::BindTexture(gl::TEXTURE_2D, self.pixel_texture);
+          gl::ActiveTexture(gl::TEXTURE0);
+          gl::TexImage2D(
+            gl::TEXTURE_2D,
+            0,
+            gl::RGBA32F as i32,
+            dimensions.0 as i32,
+            dimensions.1 as i32,
+            0,
+            gl::RGBA,
+            gl::FLOAT,
+            bytes,
+          );
+        } else {
+          gl::BindTexture(gl::TEXTURE_2D, input_texture);
+          gl::ActiveTexture(gl::TEXTURE0);
+        }
+
+        gl::BindFramebuffer(gl::FRAMEBUFFER, output_framebuffer);
+
+        if self.frame == 0 {
+          if gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE {
+            panic!("Failed to prepare framebuffer");
+          }
+        }
+
+        gl::Clear(gl::COLOR_BUFFER_BIT);
+        gl::Viewport(0, 0, dimensions.0 as i32, dimensions.1 as i32);
+        gl::DrawArrays(gl::TRIANGLES, 0, 6);
+      }
+
+      mem::swap(&mut input_index, &mut output_index);
+    }
+
+    let input_texture = self.framebuffer_textures[input_index];
 
     unsafe {
-      gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+      gl::UseProgram(self.passthrough_program);
+      gl::BindTexture(gl::TEXTURE_2D, input_texture);
+      gl::ActiveTexture(gl::TEXTURE0);
+      gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+      gl::Viewport(0, 0, window_size.0 as i32, window_size.1 as i32);
       gl::Clear(gl::COLOR_BUFFER_BIT);
-
-      gl::TexImage2D(
-        gl::TEXTURE_2D,
-        0,
-        gl::RGBA32F as i32,
-        dimensions.0 as i32,
-        dimensions.1 as i32,
-        0,
-        gl::RGBA,
-        gl::FLOAT,
-        bytes,
-      );
-
       gl::DrawArrays(gl::TRIANGLES, 0, 6);
-
-      #[cfg(debug_assertions)]
-      assert_eq!(gl::GetError(), gl::NO_ERROR);
-    }
-  }
-
-  fn compile_shader(
-    source: &str,
-    ty: GLenum,
-    shader_cache: &mut HashMap<String, GLuint>,
-  ) -> Result<GLuint, String> {
-    if let Some(shader) = shader_cache.get(source).cloned() {
-      return Ok(shader);
     }
 
     unsafe {
-      let shader = gl::CreateShader(ty);
-      let c_str = CString::new(source.as_bytes()).unwrap();
-      gl::ShaderSource(shader, 1, &c_str.as_ptr(), ptr::null());
-      gl::CompileShader(shader);
-
-      // Get the compile status
-      let mut status = GLint::from(gl::FALSE);
-      gl::GetShaderiv(shader, gl::COMPILE_STATUS, &mut status);
-
-      // Fail on error
-      if status != (GLint::from(gl::TRUE)) {
-        let mut len = 0;
-        gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut len);
-        let mut buf = Vec::with_capacity(len as usize);
-        buf.set_len((len as usize) - 1); // subtract 1 to skip the trailing null character
-        gl::GetShaderInfoLog(
-          shader,
-          len,
-          ptr::null_mut(),
-          buf.as_mut_ptr() as *mut GLchar,
-        );
-        return Err(String::from_utf8_lossy(&buf).to_string());
+      if self.frame == 0 {
+        assert_eq!(gl::GetError(), gl::NO_ERROR);
       }
-
-      shader_cache.insert(source.to_string(), shader);
-
-      Ok(shader)
-    }
-  }
-
-  fn link_program(
-    vs: GLuint,
-    fs: GLuint,
-    program_cache: &mut HashMap<(GLuint, GLuint), GLuint>,
-  ) -> Result<GLuint, String> {
-    let cache_key = (vs, fs);
-
-    if let Some(program) = program_cache.get(&cache_key).cloned() {
-      return Ok(program);
     }
 
-    unsafe {
-      let program = gl::CreateProgram();
-      gl::AttachShader(program, vs);
-      gl::AttachShader(program, fs);
-      gl::LinkProgram(program);
-      // Get the link status
-      let mut status = GLint::from(gl::FALSE);
-      gl::GetProgramiv(program, gl::LINK_STATUS, &mut status);
-
-      // Fail on error
-      if status != GLint::from(gl::TRUE) {
-        let mut len: GLint = 0;
-        gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &mut len);
-        let mut buf = Vec::with_capacity(len as usize);
-        buf.set_len((len as usize) - 1); // subtract 1 to skip the trailing null character
-        gl::GetProgramInfoLog(
-          program,
-          len,
-          ptr::null_mut(),
-          buf.as_mut_ptr() as *mut GLchar,
-        );
-        return Err(String::from_utf8_lossy(&buf).to_string());
-      }
-
-      program_cache.insert(cache_key, program);
-
-      Ok(program)
-    }
+    self.frame += 1;
   }
 }
 
 impl Drop for Display {
   fn drop(&mut self) {
     unsafe {
-      gl::DeleteProgram(self.shader_program);
-      gl::DeleteShader(self.fragment_shader);
-      gl::DeleteShader(self.vertex_shader);
-      gl::DeleteTextures(1, &self.texture);
+      gl::DeleteTextures(
+        self.framebuffer_textures.len() as i32,
+        self.framebuffer_textures.as_mut_ptr(),
+      );
+      gl::DeleteFramebuffers(
+        self.framebuffers.len() as i32,
+        self.framebuffers.as_mut_ptr(),
+      );
       gl::DeleteBuffers(1, &self.vbo);
       gl::DeleteVertexArrays(1, &self.vao);
+      assert_eq!(gl::GetError(), gl::NO_ERROR);
     }
   }
 }

@@ -4,17 +4,13 @@ extern crate cpal;
 extern crate gl;
 extern crate glutin;
 
+mod common;
 mod display;
 mod error;
+mod shader_cache;
 mod speaker;
 
-use std::{ffi::CString, mem, ptr, str, thread};
-
-use super::*;
-
-use self::{
-  display::Display, error::Error, glutin::{GlContext, GlWindow}, speaker::Speaker,
-};
+use runtime::common::*;
 
 static DEFAULT_PIXEL: Pixel = Pixel {
   red: 0.0,
@@ -130,9 +126,11 @@ impl Runtime {
         self.pixels.resize(pixel_count, DEFAULT_PIXEL);
       }
 
-      self
-        .display
-        .set_shaders(self.program.vertex_shader(), self.program.fragment_shader())?;
+      self.display.set_shaders(
+        self.program.vertex_shader(),
+        self.program.fragment_shader(),
+        self.program.filter_shaders(),
+      )?;
 
       self.program.render(&mut self.pixels);
       self.should_quit = self.program.should_quit() | should_quit;
@@ -143,7 +141,9 @@ impl Runtime {
         self.current_title.push_str(&title);
       }
 
-      self.display.present(&self.pixels, dimensions);
+      if let Some(inner_size) = self.gl_window.get_inner_size() {
+        self.display.present(&self.pixels, dimensions, inner_size);
+      }
 
       self.gl_window.swap_buffers()?;
     }

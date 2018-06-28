@@ -41,6 +41,22 @@ pub struct Pixel {
   pub alpha: f32,
 }
 
+/// Construct a pixel with the given components
+pub fn rgba(red: f32, green: f32, blue: f32, alpha: f32) -> Pixel {
+  Pixel {
+    red,
+    green,
+    blue,
+    alpha,
+  }
+}
+
+/// Construct a pixel with the given RGB components and an
+/// alpha component of 1.0
+pub fn rgb(red: f32, green: f32, blue: f32) -> Pixel {
+  rgba(red, green, blue, 1.0)
+}
+
 /// An image made of pixels. Used by the `pxl-build` crate
 /// for image resources
 pub struct Image<'pixels> {
@@ -185,6 +201,19 @@ pub trait Program: 'static {
   /// that custom fragment shaders should adhere to.
   fn fragment_shader(&self) -> &str {
     include_str!("fragment_shader.glsl")
+  }
+
+  /// Postprocessing filters to be applied after rendering.
+  ///
+  /// Filters may read from a texture sampler named "input",
+  /// which for the first filter will contain the output of
+  /// the main fragment shader, and for the filters thereafter
+  /// will contain the output of the previous filter.
+  ///
+  /// The output of the last filter in the chain will be sent
+  /// to the display.
+  fn filter_shaders(&self) -> &[&str] {
+    &[]
   }
 
   /// Return the title of the program
