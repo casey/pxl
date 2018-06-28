@@ -1,6 +1,10 @@
 # default to `watch`
 default: watch
 
+bt="0"
+
+export RUST_BACKTRACE = bt
+
 # submit a pull request
 pr: fmt clippy test
 	@echo Checking for FIXME/TODO...
@@ -22,11 +26,19 @@ fmt:
 
 # watch for changes and run `cargo fmt` and `cargo check`
 watch:
-	cargo watch --clear --exec fmt --exec check
+	cargo watch --clear --exec fmt --exec 'check --all-targets'
+
+# check all targets
+check:
+	cargo check --all-targets
 
 # check for out-of-date dependencies
 outdated:
 	cargo outdated
+
+# build and open docs
+doc:
+	cargo doc --open
 
 # everyone's favorite animate paper clip
 clippy:
@@ -40,9 +52,12 @@ life:
 shaders:
 	cargo run --package pxl --release --example shaders
 
-# run the blaster visualizer example
-blaster:
-	cargo run --package pxl --release --example blaster
+# run pxl-mono
+mono:
+	cargo run --package pxl-mono --release
+
+# run all examples in sequence, useful for testing
+examples: life mono shaders
 
 # clean up the feature branch named BRANCH
 done BRANCH:

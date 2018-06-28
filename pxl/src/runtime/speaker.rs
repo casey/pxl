@@ -6,11 +6,15 @@ use runtime::cpal;
 
 pub struct Speaker {
   synthesizer: Arc<Mutex<Synthesizer>>,
+  synthesizer_output: Arc<Mutex<Vec<AudioSample>>>,
   event_loop: EventLoop,
 }
 
 impl Speaker {
-  pub fn new(synthesizer: Arc<Mutex<Synthesizer>>) -> Result<Speaker, Error> {
+  pub fn new(
+    synthesizer: Arc<Mutex<Synthesizer>>,
+    synthesizer_output: Arc<Mutex<Vec<AudioSample>>>,
+  ) -> Result<Speaker, Error> {
     let event_loop = EventLoop::new();
 
     let device = cpal::default_output_device().ok_or(Error::AudioOutputDeviceInitialization)?;
@@ -45,6 +49,7 @@ impl Speaker {
 
     Ok(Speaker {
       synthesizer,
+      synthesizer_output,
       event_loop,
     })
   }
@@ -52,6 +57,7 @@ impl Speaker {
   pub fn play(self) -> ! {
     let synthesizer = self.synthesizer;
     let event_loop = self.event_loop;
+    let synthesizer_output = self.synthesizer_output;
     let mut samples = Vec::new();
     let mut samples_played = 0;
 
@@ -61,7 +67,7 @@ impl Speaker {
         samples.clear();
         samples.resize(
           sample_count,
-          ::Sample {
+          AudioSample {
             left: 0.0,
             right: 0.0,
           },
@@ -70,6 +76,7 @@ impl Speaker {
           .lock()
           .unwrap()
           .synthesize(samples_played, &mut samples);
+        synthesizer_output.lock().unwrap().extend(&samples);
         samples_played += sample_count as u64;
         match buffer {
           UnknownTypeOutputBuffer::F32(mut buffer) => {

@@ -28,6 +28,8 @@ pub struct Runtime {
   gl_window: GlWindow,
   current_title: String,
   display: Display,
+  synthesizer_output: Arc<Mutex<Vec<AudioSample>>>,
+  sample_buffer: Vec<AudioSample>,
 }
 
 impl Runtime {
@@ -78,8 +80,10 @@ impl Runtime {
 
     let display = Display::new()?;
 
+    let synthesizer_output = Arc::new(Mutex::new(Vec::new()));
+
     if let Some(synthesizer) = synthesizer {
-      let speaker = Speaker::new(synthesizer)?;
+      let speaker = Speaker::new(synthesizer, synthesizer_output.clone())?;
 
       thread::spawn(move || {
         speaker.play();
@@ -90,6 +94,8 @@ impl Runtime {
       should_quit: false,
       events: Vec::new(),
       pixels: Vec::new(),
+      sample_buffer: Vec::new(),
+      synthesizer_output,
       program,
       window_event_loop,
       gl_window,
@@ -99,6 +105,9 @@ impl Runtime {
   }
 
   pub fn run(mut self) -> Result<(), Error> {
+    let start = Instant::now();
+    let mut ticked = Duration::new(0, 0);
+
     while !self.should_quit {
       let mut new_size = None;
       let mut should_quit = false;
@@ -144,7 +153,11 @@ impl Runtime {
           .resize(new_size.to_physical(self.gl_window.get_hidpi_factor()));
       }
 
-      self.program.tick(&self.events);
+      let elapsed = start.elapsed() - ticked;
+
+      self.program.tick(elapsed, &self.events);
+
+      ticked += elapsed;
 
       let resolution = self.program.resolution();
 
@@ -158,6 +171,13 @@ impl Runtime {
         self.program.fragment_shader(),
         self.program.filter_shaders(),
       )?;
+
+      self.sample_buffer.clear();
+
+      mem::swap(
+        self.synthesizer_output.lock().unwrap().deref_mut(),
+        &mut self.sample_buffer,
+      );
 
       self.program.render(&mut self.pixels);
       self.should_quit = self.program.should_quit() | should_quit;
@@ -173,7 +193,7 @@ impl Runtime {
           inner_size.to_physical(self.gl_window.get_hidpi_factor());
         self
           .display
-          .present(&self.pixels, resolution, (width as u32, height as u32));
+          .present(&self.pixels, resolution, (width as u32, height as u32), &self.sample_buffer);
       }
 
       self.gl_window.swap_buffers()?;

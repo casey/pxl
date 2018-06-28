@@ -9,9 +9,10 @@ repository    = "https://github.com/casey/pxl"
 documentation = "https://docs.rs/pxl"
 
 [dependencies]
-cpal   = "0.8.1"
-gl     = "0.10.0"
-glutin = "0.17.0"
+cpal    = "0.8.1"
+gl      = "0.10.0"
+glutin  = "0.17.0"
+rustfft = "2.0.0"
 
 [dev-dependencies]
 rand = "0.5.0"
@@ -23,7 +24,3 @@ path = "examples/shaders/main.rs"
 [[example]]
 name = "life"
 path = "examples/life.rs"
-
-[[example]]
-name = "blaster"
-path = "examples/blaster.rs"

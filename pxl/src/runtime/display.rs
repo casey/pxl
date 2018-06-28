@@ -16,6 +16,7 @@ static DEFAULT_FRAGMENT_SHADER: &str = include_str!("../fragment_shader.glsl");
 pub struct Display {
   shader_program: u32,
   pixel_texture: u32,
+  sample_texture: u32,
   passthrough_program: u32,
   filter_shader_programs: Vec<u32>,
   framebuffer_textures: Vec<u32>,
@@ -53,6 +54,16 @@ impl Display {
     unsafe {
       gl::GenTextures(1, &mut pixel_texture);
       gl::BindTexture(gl::TEXTURE_2D, pixel_texture);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+    }
+
+    let mut sample_texture = 0;
+    unsafe {
+      gl::GenTextures(1, &mut sample_texture);
+      gl::BindTexture(gl::TEXTURE_2D, sample_texture);
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
@@ -103,6 +114,7 @@ impl Display {
       frame: 0,
       passthrough_program,
       pixel_texture,
+      sample_texture,
       shader_cache,
       framebuffer_textures,
       framebuffers,
@@ -133,9 +145,31 @@ impl Display {
     Ok(())
   }
 
-  pub fn present(&mut self, pixels: &[Pixel], resolution: (usize, usize), window_size: (u32, u32)) {
+  pub fn present(
+    &mut self,
+    pixels: &[Pixel],
+    resolution: (usize, usize),
+    window_size: (u32, u32),
+    samples: &[AudioSample],
+  ) {
     let pixels = pixels.as_ptr();
     let bytes = pixels as *const c_void;
+
+    unsafe {
+      gl::ActiveTexture(gl::TEXTURE0 + 1);
+      gl::BindTexture(gl::TEXTURE_2D, self.sample_texture);
+      gl::TexImage2D(
+        gl::TEXTURE_2D,
+        0,
+        gl::RG32F as i32,
+        samples.len() as i32,
+        1,
+        0,
+        gl::RG,
+        gl::FLOAT,
+        samples.as_ptr() as *const c_void,
+      );
+    }
 
     let pass_count = self.filter_shader_programs.len() + 1;
 
@@ -158,6 +192,7 @@ impl Display {
       unsafe {
         gl::UseProgram(program);
 
+        gl::ActiveTexture(gl::TEXTURE0 + 2);
         gl::BindTexture(gl::TEXTURE_2D, output_texture);
         gl::TexImage2D(
           gl::TEXTURE_2D,
@@ -168,12 +203,12 @@ impl Display {
           0,
           gl::RGBA,
           gl::FLOAT,
-          0 as *const c_void,
+          ptr::null(),
         );
 
+        gl::ActiveTexture(gl::TEXTURE0);
         if first {
           gl::BindTexture(gl::TEXTURE_2D, self.pixel_texture);
-          gl::ActiveTexture(gl::TEXTURE0);
           gl::TexImage2D(
             gl::TEXTURE_2D,
             0,
@@ -187,15 +222,12 @@ impl Display {
           );
         } else {
           gl::BindTexture(gl::TEXTURE_2D, input_texture);
-          gl::ActiveTexture(gl::TEXTURE0);
         }
 
         gl::BindFramebuffer(gl::FRAMEBUFFER, output_framebuffer);
 
-        if self.frame == 0 {
-          if gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE {
-            panic!("Failed to prepare framebuffer");
-          }
+        if self.frame == 0 && gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE {
+          panic!("Failed to prepare framebuffer");
         }
 
         gl::Clear(gl::COLOR_BUFFER_BIT);
@@ -210,8 +242,8 @@ impl Display {
 
     unsafe {
       gl::UseProgram(self.passthrough_program);
-      gl::BindTexture(gl::TEXTURE_2D, input_texture);
       gl::ActiveTexture(gl::TEXTURE0);
+      gl::BindTexture(gl::TEXTURE_2D, input_texture);
       gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
       gl::Viewport(0, 0, window_size.0 as i32, window_size.1 as i32);
       gl::Clear(gl::COLOR_BUFFER_BIT);

@@ -53,7 +53,7 @@ impl Program for Shaders {
     VERTEX_SHADERS[self.active_vertex_shader_index]
   }
 
-  fn tick(&mut self, events: &[Event]) {
+  fn tick(&mut self, _elapsed: Duration, events: &[Event]) {
     for event in events {
       match event {
         Event::Button {

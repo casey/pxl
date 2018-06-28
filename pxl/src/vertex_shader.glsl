@@ -51,6 +51,7 @@ void main() {
   uv = position.xy * 0.5 + vec2(0.5, 0.5);
   // Flip the y coordinate
   uv.y = 1 - uv.y;
+
   // Use the input vertex as-is as output from the vertex shader
   gl_Position = position;
 }
