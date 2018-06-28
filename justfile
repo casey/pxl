@@ -39,6 +39,10 @@ life:
 shaders:
 	cargo run --package pxl --release --example shaders
 
+# run the blaster visualizer example
+blaster:
+	cargo run --package pxl --release --example blaster
+
 # clean up the feature branch named BRANCH
 done BRANCH:
 	git checkout {{BRANCH}} --

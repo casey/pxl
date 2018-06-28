@@ -41,6 +41,22 @@ pub struct Pixel {
   pub alpha: f32,
 }
 
+/// Construct a pixel with the given components
+pub fn rgba(red: f32, green: f32, blue: f32, alpha: f32) -> Pixel {
+  Pixel {
+    red,
+    green,
+    blue,
+    alpha,
+  }
+}
+
+/// Construct a pixel with the given RGB components and an
+/// alpha component of 1.0
+pub fn rgb(red: f32, green: f32, blue: f32) -> Pixel {
+  rgba(red, green, blue, 1.0)
+}
+
 /// An image made of pixels. Used by the `pxl-build` crate
 /// for image resources
 pub struct Image<'pixels> {

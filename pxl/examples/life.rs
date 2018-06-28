@@ -180,6 +180,10 @@ impl Program for Life {
     Some(self.synthesizer.clone())
   }
 
+  fn filter_shaders(&self) -> &[&str] {
+    &[]
+  }
+
   fn fragment_shader(&self) -> &str {
     "
 #version 150

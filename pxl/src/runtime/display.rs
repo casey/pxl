@@ -134,6 +134,9 @@ impl Display {
 
     let pass_count = self.filter_shader_programs.len() + 1;
 
+    let mut input_index = 0;
+    let mut output_index = 1;
+
     for pass in 0..pass_count {
       let first = pass == 0;
 
@@ -143,8 +146,8 @@ impl Display {
         self.filter_shader_programs[pass - 1]
       };
 
-      let input_texture = self.textures[pass % 2];
-      let output_framebuffer = self.framebuffers[(pass + 1) % 2];
+      let input_texture = self.textures[input_index];
+      let output_framebuffer = self.framebuffers[output_index];
 
       unsafe {
         gl::UseProgram(program);
@@ -170,10 +173,19 @@ impl Display {
         gl::Clear(gl::COLOR_BUFFER_BIT);
         gl::DrawArrays(gl::TRIANGLES, 0, 6);
       }
+
+      input_index = (input_index + 1) % 2;
+      output_index = (output_index + 1) % 2;
     }
+
+    let input_texture = self.textures[input_index];
 
     unsafe {
       gl::UseProgram(self.passthrough_program);
+
+      gl::BindTexture(gl::TEXTURE_2D, input_texture);
+      gl::ActiveTexture(gl::TEXTURE0);
+
       gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
       gl::Clear(gl::COLOR_BUFFER_BIT);
       gl::DrawArrays(gl::TRIANGLES, 0, 6);
