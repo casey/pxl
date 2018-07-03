@@ -27,3 +27,7 @@ path = "examples/life.rs"
 [[example]]
 name = "blaster"
 path = "examples/blaster.rs"
+
+[[example]]
+name = "headstone"
+path = "examples/headstone.rs"

@@ -23,3 +23,13 @@ On Ubuntu, you can install them with:
 ```sh
 sudo apt install libasound2-dev
 ```
+
+## Examples
+
+To run one of the examples, type the following:
+```sh
+cargo run --package pxl --release --example EXAMPLE_NAME
+```
+
+To add one of your own examples, place it in pxl/examples and modify pxl/Cargo.toml
+to include it.
