@@ -22,8 +22,18 @@ struct Loopback {
 }
 
 const USE_LOOPBACK_DEVICE: bool = true;
-const BLACK: Pixel = Pixel{red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0};
-const WHITE: Pixel = Pixel{red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0};
+const BLACK: Pixel = Pixel {
+  red: 0.0,
+  green: 0.0,
+  blue: 0.0,
+  alpha: 1.0,
+};
+const WHITE: Pixel = Pixel {
+  red: 1.0,
+  green: 1.0,
+  blue: 1.0,
+  alpha: 1.0,
+};
 const SIZE: usize = 256;
 
 fn mono(white: bool) -> Pixel {
@@ -155,7 +165,7 @@ enum Pattern {
 
 impl Pattern {
   fn cycle(self) -> Pattern {
-    FromPrimitive::from_u8(self as u8 + 1).unwrap_or_else(||FromPrimitive::from_u8(0).unwrap())
+    FromPrimitive::from_u8(self as u8 + 1).unwrap_or_else(|| FromPrimitive::from_u8(0).unwrap())
   }
 
   fn render(self, pixels: &mut [Pixel]) {
@@ -163,14 +173,22 @@ impl Pattern {
     match self {
       Black => pixels.iter_mut().map(|pixel| *pixel = BLACK).count(),
       White => pixels.iter_mut().map(|pixel| *pixel = WHITE).count(),
-      Grey => pixels.iter_mut().enumerate().map(|(i, pixel)| {
-        let y = i / SIZE;
-        *pixel = mono(i % 2 == y % 2);
-      }).count(),
-      Striped => pixels.iter_mut().enumerate().map(|(i, pixel)| {
-        let y = i % SIZE;
-        *pixel = mono(y % 2 == 0);
-      }).count(),
+      Grey => pixels
+        .iter_mut()
+        .enumerate()
+        .map(|(i, pixel)| {
+          let y = i / SIZE;
+          *pixel = mono(i % 2 == y % 2);
+        })
+        .count(),
+      Striped => pixels
+        .iter_mut()
+        .enumerate()
+        .map(|(i, pixel)| {
+          let y = i % SIZE;
+          *pixel = mono(y % 2 == 0);
+        })
+        .count(),
     };
   }
 }
@@ -206,6 +224,8 @@ uniform sampler2D source;
 
 uniform sampler2D samples;
 
+uniform sampler2D frequencies;
+
 vec4 render(float position, float intensity) {
   vec4 src = texture(source, uv);
   if (position < intensity) {
@@ -216,7 +236,7 @@ vec4 render(float position, float intensity) {
 }
 
 void main() {
-  vec4 sample = texture(samples, uv.ts);
+  vec4 sample = uv.y < 0.5 ? texture(samples, uv.ts) : texture(frequencies, uv.ts);
 
   if (uv.x < 0.5) {
     color = render(uv.x * 4 - 1, sample.x);
@@ -229,7 +249,11 @@ void main() {
 
   fn tick(&mut self, _: Duration, events: &[Event]) {
     for event in events {
-      if let Event::Button{button: Button::Action, state: ButtonState::Pressed} = event {
+      if let Event::Button {
+        button: Button::Action,
+        state: ButtonState::Pressed,
+      } = event
+      {
         self.pattern = self.pattern.cycle();
       }
     }

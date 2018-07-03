@@ -72,6 +72,10 @@ impl ShaderCache {
       let sample_uniform = gl::GetUniformLocation(program, zsamples.as_ptr());
       gl::Uniform1i(sample_uniform, 1);
 
+      let zsamples = CString::new("frequencies").unwrap();
+      let sample_uniform = gl::GetUniformLocation(program, zsamples.as_ptr());
+      gl::Uniform1i(sample_uniform, 3);
+
       let zposition = CString::new("position").unwrap();
       let pos_attr = gl::GetAttribLocation(program, zposition.as_ptr());
       gl::EnableVertexAttribArray(pos_attr as GLuint);

@@ -17,6 +17,7 @@ pub struct Display {
   shader_program: u32,
   pixel_texture: u32,
   sample_texture: u32,
+  frequency_texture: u32,
   passthrough_program: u32,
   filter_shader_programs: Vec<u32>,
   framebuffer_textures: Vec<u32>,
@@ -70,6 +71,16 @@ impl Display {
       gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
     }
 
+    let mut frequency_texture = 0;
+    unsafe {
+      gl::GenTextures(1, &mut frequency_texture);
+      gl::BindTexture(gl::TEXTURE_2D, frequency_texture);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
+      gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+    }
+
     let mut framebuffer_textures = vec![0, 0];
     unsafe {
       gl::GenTextures(
@@ -115,6 +126,7 @@ impl Display {
       passthrough_program,
       pixel_texture,
       sample_texture,
+      frequency_texture,
       shader_cache,
       framebuffer_textures,
       framebuffers,
@@ -151,6 +163,7 @@ impl Display {
     resolution: (usize, usize),
     window_size: (u32, u32),
     samples: &[AudioSample],
+    frequencies: &[Complex<f32>],
   ) {
     let pixels = pixels.as_ptr();
     let bytes = pixels as *const c_void;
@@ -168,6 +181,22 @@ impl Display {
         gl::RG,
         gl::FLOAT,
         samples.as_ptr() as *const c_void,
+      );
+    }
+
+    unsafe {
+      gl::ActiveTexture(gl::TEXTURE0 + 3);
+      gl::BindTexture(gl::TEXTURE_2D, self.frequency_texture);
+      gl::TexImage2D(
+        gl::TEXTURE_2D,
+        0,
+        gl::RG32F as i32,
+        frequencies.len() as i32,
+        1,
+        0,
+        gl::RG,
+        gl::FLOAT,
+        frequencies.as_ptr() as *const c_void,
       );
     }
 
@@ -226,7 +255,9 @@ impl Display {
 
         gl::BindFramebuffer(gl::FRAMEBUFFER, output_framebuffer);
 
-        if self.frame == 0 && gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE {
+        if self.frame == 0
+          && gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE
+        {
           panic!("Failed to prepare framebuffer");
         }
 
