@@ -1,0 +1,11 @@
+[package]
+name = "pxl-mono"
+version = "0.0.0"
+authors = ["Casey Rodarmor <casey@rodarmor.com>"]
+
+[dependencies]
+cpal       = "0.8.1"
+log        = "0.4.2"
+num-derive = "0.2.2"
+num-traits = "0.2.5"
+pxl        = {path = "../pxl", version = "0.0.9"}

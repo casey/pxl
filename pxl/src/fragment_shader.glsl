@@ -16,6 +16,15 @@ out vec4 color;
 // the last call to `pxl::Program::render`
 uniform sampler2D source;
 
+// A texture sampler containing the audio samples written
+// by the program's synthesizer. The amount of samples can
+// vary, as the renderer and synthesizer are not necessarily
+// in sync.
+//
+// The red component contains the left sample and the green
+// component contians the right sample.
+uniform sampler2D samples;
+
 void main() {
   // Look up the color in the `pixels` texture at coordinates `uv`
   // and use them to set the output color of this fragment.

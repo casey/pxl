@@ -16,7 +16,9 @@
 
 mod runtime;
 
-use std::sync::{Arc, Mutex};
+pub use std::{
+  sync::{Arc, Mutex}, time::Duration,
+};
 
 /// The number of audio samples in a second. Synthesizer
 /// implementations will need this to calculate the current
@@ -71,8 +73,8 @@ pub struct Image<'pixels> {
 /// A single stereo audio sample, representing `1/SAMPLES_PER_SECOND`
 /// of an audio signal
 #[repr(C)]
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Sample {
+#[derive(Copy, Clone, Debug, PartialEq, Default)]
+pub struct AudioSample {
   /// The left channel value
   pub left: f32,
   /// The right channel value
@@ -84,7 +86,7 @@ pub struct Sample {
 /// In the current runtime, the arrow keys produce `Left`, `Right`, `Up` and
 /// `Down` events, and the spacebar produces `Action` events.
 ///
-/// Buttons are intended to be abstract, and in the future gamepad,
+/// Buttons are intended to be abstract. In the future gamepad,
 /// touch, and/or keyboard input may produce Button events
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Button {
@@ -160,7 +162,7 @@ pub trait Synthesizer: Send + 'static {
   ///
   /// * `samples_played` — number of samples written by previous calls to synthesize
   /// * `output_buffer`  — the audio samples that synthesize should write
-  fn synthesize(&mut self, _samples_played: u64, _output_buffer: &mut [Sample]) {}
+  fn synthesize(&mut self, _samples_played: u64, _output_buffer: &mut [AudioSample]) {}
 }
 
 /// Trait representing a `pxl::Program`
@@ -230,12 +232,11 @@ pub trait Program: 'static {
     false
   }
 
-  /// Process events and update the state of the program
+  /// Process events and update the state of the program.
   ///
-  /// Called by the runtime 60 times per second.
-  ///
+  /// * `elapsed` — time elapsed since the last call to tick `tick`
   /// * `events` — events that have occurred since the last call to `tick`
-  fn tick(&mut self, _events: &[Event]) {}
+  fn tick(&mut self, _elapsed: Duration, _events: &[Event]) {}
 
   /// Draw to the display
   ///

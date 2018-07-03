@@ -9,4 +9,6 @@ members = [
   "pxl-build",
   # Tests for `pxl-build`
   "pxl-build-test",
+  # A music visualizer made using pxl
+  "pxl-mono",
 ]

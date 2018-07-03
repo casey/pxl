@@ -64,9 +64,13 @@ impl ShaderCache {
       let zcolor = CString::new("color").unwrap();
       gl::BindFragDataLocation(program, 0, zcolor.as_ptr());
 
-      let zpixels = CString::new("source").unwrap();
-      let pixel_uniform = gl::GetUniformLocation(program, zpixels.as_ptr());
-      gl::Uniform1i(pixel_uniform, 0);
+      let zsource = CString::new("source").unwrap();
+      let source_uniform = gl::GetUniformLocation(program, zsource.as_ptr());
+      gl::Uniform1i(source_uniform, 0);
+
+      let zsamples = CString::new("samples").unwrap();
+      let sample_uniform = gl::GetUniformLocation(program, zsamples.as_ptr());
+      gl::Uniform1i(sample_uniform, 1);
 
       let zposition = CString::new("position").unwrap();
       let pos_attr = gl::GetAttribLocation(program, zposition.as_ptr());

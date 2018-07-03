@@ -43,7 +43,7 @@ struct LifeSynthesizer {
 }
 
 impl Synthesizer for LifeSynthesizer {
-  fn synthesize(&mut self, mut samples_played: u64, samples: &mut [Sample]) {
+  fn synthesize(&mut self, mut samples_played: u64, samples: &mut [AudioSample]) {
     for sample in samples {
       let time = samples_played as f64 / SAMPLES_PER_SECOND as f64;
       let s = (time * 440.0 * TAU).sin() as f32 * self.intensity;
@@ -130,7 +130,7 @@ impl Program for Life {
     "life"
   }
 
-  fn tick(&mut self, events: &[Event]) {
+  fn tick(&mut self, _elapsed: Duration, events: &[Event]) {
     for event in events {
       if let Event::Button {
         state: ButtonState::Released,
