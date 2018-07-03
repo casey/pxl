@@ -22,7 +22,7 @@ test:
 
 # format rust sourcecode with rustfmt
 fmt:
-	cargo fmt
+	cargo fmt --all
 
 # watch for changes and run `cargo fmt` and `cargo check`
 watch:
@@ -38,7 +38,7 @@ outdated:
 
 # build and open docs
 doc:
-	cargo doc --open
+	cargo doc --open -p pxl
 
 # everyone's favorite animate paper clip
 clippy:

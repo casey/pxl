@@ -3,6 +3,7 @@
 extern crate cpal;
 extern crate gl;
 extern crate glutin;
+extern crate rustfft;
 
 mod common;
 mod display;
@@ -30,6 +31,9 @@ pub struct Runtime {
   display: Display,
   synthesizer_output: Arc<Mutex<Vec<AudioSample>>>,
   sample_buffer: Vec<AudioSample>,
+  fft_planner: FFTplanner<f32>,
+  fft_input: Vec<Complex<f32>>,
+  fft_output: Vec<Complex<f32>>,
 }
 
 impl Runtime {
@@ -95,6 +99,9 @@ impl Runtime {
       events: Vec::new(),
       pixels: Vec::new(),
       sample_buffer: Vec::new(),
+      fft_planner: FFTplanner::new(false),
+      fft_input: Vec::new(),
+      fft_output: Vec::new(),
       synthesizer_output,
       program,
       window_event_loop,
@@ -179,6 +186,19 @@ impl Runtime {
         &mut self.sample_buffer,
       );
 
+      let fft_size = self.sample_buffer.len();
+      self.fft_output.resize(fft_size, FftZero::zero());
+      self.fft_input.resize(fft_size, FftZero::zero());
+
+      for (input, sample) in self.fft_input.iter_mut().zip(&self.sample_buffer) {
+        *input = Complex::new(sample.left, 0.0);
+      }
+
+      self.fft_output.resize(fft_size, FftZero::zero());
+
+      let fft = self.fft_planner.plan_fft(fft_size);
+      fft.process(&mut self.fft_input, &mut self.fft_output);
+
       self.program.render(&mut self.pixels);
       self.should_quit = self.program.should_quit() | should_quit;
       let title = self.program.title();
@@ -191,9 +211,13 @@ impl Runtime {
       if let Some(inner_size) = self.gl_window.get_inner_size() {
         let PhysicalSize { width, height } =
           inner_size.to_physical(self.gl_window.get_hidpi_factor());
-        self
-          .display
-          .present(&self.pixels, resolution, (width as u32, height as u32), &self.sample_buffer);
+        self.display.present(
+          &self.pixels,
+          resolution,
+          (width as u32, height as u32),
+          &self.sample_buffer,
+          &self.fft_output[0..self.fft_output.len() / 2],
+        );
       }
 
       self.gl_window.swap_buffers()?;

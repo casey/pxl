@@ -13,5 +13,6 @@ pub use runtime::{
   glutin::{
     dpi::{LogicalSize, PhysicalSize}, GlContext, GlWindow,
   },
+  rustfft::num_traits::Zero as FftZero, rustfft::{num_complex::Complex, FFTplanner},
   shader_cache::ShaderCache, speaker::Speaker,
 };
