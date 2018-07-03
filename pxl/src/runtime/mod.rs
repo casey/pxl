@@ -35,16 +35,41 @@ impl Runtime {
     let window_event_loop = glutin::EventsLoop::new();
 
     let current_title = program.title().to_string();
-    let dimensions = program.dimensions();
+    let resolution = program.resolution();
     let synthesizer = program.synthesizer();
+
+    // Initially select dimensions using the requested resolution
+    let mut dimensions = LogicalSize::new(resolution.0 as f64, resolution.1 as f64);
 
     let window = glutin::WindowBuilder::new()
       .with_title(current_title.as_str())
-      .with_dimensions(dimensions.0 as u32, dimensions.1 as u32);
+      .with_dimensions(dimensions);
 
-    let context = glutin::ContextBuilder::new().with_vsync(true);
+    let context = glutin::ContextBuilder::new()
+      .with_double_buffer(Some(true))
+      .with_vsync(true);
 
     let gl_window = GlWindow::new(window, context, &window_event_loop)?;
+
+    let monitor = gl_window.get_current_monitor();
+
+    let mut maximum_dimensions = monitor
+      .get_dimensions()
+      .to_logical(monitor.get_hidpi_factor());
+
+    // subtract a 100px border on all sides
+    maximum_dimensions.width -= 200.0;
+    maximum_dimensions.height -= 200.0;
+
+    // calculate a scaling factor to scale the dimensions up to as
+    // large as is allowed by maximum_dimensions
+    let scale = (maximum_dimensions.width / dimensions.width)
+      .min(maximum_dimensions.height / dimensions.height);
+
+    dimensions.width *= scale;
+    dimensions.height *= scale;
+
+    gl_window.set_inner_size(dimensions);
 
     unsafe {
       gl_window.make_current()?;
@@ -86,7 +111,7 @@ impl Runtime {
         if let glutin::Event::WindowEvent { event, .. } = event {
           match event {
             CloseRequested => should_quit = true,
-            Resized(w, h) => new_size = Some((w, h)),
+            Resized(logical_size) => new_size = Some(logical_size),
             KeyboardInput { input, .. } => if let Some(virtual_keycode) = input.virtual_keycode {
               use self::glutin::VirtualKeyCode::*;
               let button = match virtual_keycode {
@@ -113,15 +138,17 @@ impl Runtime {
 
       mem::replace(&mut self.events, events);
 
-      if let Some((w, h)) = new_size {
-        self.gl_window.resize(w, h);
+      if let Some(new_size) = new_size {
+        self
+          .gl_window
+          .resize(new_size.to_physical(self.gl_window.get_hidpi_factor()));
       }
 
       self.program.tick(&self.events);
 
-      let dimensions = self.program.dimensions();
+      let resolution = self.program.resolution();
 
-      let pixel_count = dimensions.0 * dimensions.1;
+      let pixel_count = resolution.0 * resolution.1;
       if self.pixels.len() != pixel_count {
         self.pixels.resize(pixel_count, DEFAULT_PIXEL);
       }
@@ -142,7 +169,11 @@ impl Runtime {
       }
 
       if let Some(inner_size) = self.gl_window.get_inner_size() {
-        self.display.present(&self.pixels, dimensions, inner_size);
+        let PhysicalSize { width, height } =
+          inner_size.to_physical(self.gl_window.get_hidpi_factor());
+        self
+          .display
+          .present(&self.pixels, resolution, (width as u32, height as u32));
       }
 
       self.gl_window.swap_buffers()?;
