@@ -9,7 +9,7 @@ impl Program for Blaster {
     Blaster {}
   }
 
-  fn dimensions(&self) -> (usize, usize) {
+  fn resolution(&self) -> (usize, usize) {
     (256, 256)
   }
 

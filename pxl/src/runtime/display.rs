@@ -133,7 +133,7 @@ impl Display {
     Ok(())
   }
 
-  pub fn present(&mut self, pixels: &[Pixel], dimensions: (usize, usize), window_size: (u32, u32)) {
+  pub fn present(&mut self, pixels: &[Pixel], resolution: (usize, usize), window_size: (u32, u32)) {
     let pixels = pixels.as_ptr();
     let bytes = pixels as *const c_void;
 
@@ -163,8 +163,8 @@ impl Display {
           gl::TEXTURE_2D,
           0,
           gl::RGBA32F as i32,
-          dimensions.0 as i32,
-          dimensions.1 as i32,
+          resolution.0 as i32,
+          resolution.1 as i32,
           0,
           gl::RGBA,
           gl::FLOAT,
@@ -178,8 +178,8 @@ impl Display {
             gl::TEXTURE_2D,
             0,
             gl::RGBA32F as i32,
-            dimensions.0 as i32,
-            dimensions.1 as i32,
+            resolution.0 as i32,
+            resolution.1 as i32,
             0,
             gl::RGBA,
             gl::FLOAT,
@@ -199,7 +199,7 @@ impl Display {
         }
 
         gl::Clear(gl::COLOR_BUFFER_BIT);
-        gl::Viewport(0, 0, dimensions.0 as i32, dimensions.1 as i32);
+        gl::Viewport(0, 0, resolution.0 as i32, resolution.1 as i32);
         gl::DrawArrays(gl::TRIANGLES, 0, 6);
       }
 

@@ -1,5 +1,5 @@
-# run all tests
-default: test
+# default to `watch`
+default: watch
 
 # submit a pull request
 pr: fmt clippy test
@@ -20,6 +20,7 @@ test:
 fmt:
 	cargo fmt
 
+# watch for changes and run `cargo fmt` and `cargo check`
 watch:
 	cargo watch --clear --exec fmt --exec check
 

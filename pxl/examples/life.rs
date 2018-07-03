@@ -122,7 +122,7 @@ impl Program for Life {
     }
   }
 
-  fn dimensions(&self) -> (usize, usize) {
+  fn resolution(&self) -> (usize, usize) {
     (WIDTH, HEIGHT)
   }
 

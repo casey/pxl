@@ -7,8 +7,8 @@ use fragment_shaders::FRAGMENT_SHADERS;
 use pxl::*;
 use vertex_shaders::VERTEX_SHADERS;
 
-const WIDTH: usize = 768;
-const HEIGHT: usize = 768;
+const WIDTH: usize = 512;
+const HEIGHT: usize = 512;
 
 const WHITE: Pixel = Pixel {
   red: 1.0,
@@ -41,7 +41,7 @@ impl Program for Shaders {
     "pxl shaders"
   }
 
-  fn dimensions(&self) -> (usize, usize) {
+  fn resolution(&self) -> (usize, usize) {
     (WIDTH, HEIGHT)
   }
 

@@ -9,6 +9,9 @@ pub use runtime::{
   cpal::{
     EventLoop, Format, Sample, SampleRate, StreamData, SupportedFormat, UnknownTypeOutputBuffer,
   },
-  display::Display, error::Error, gl::types::*, glutin::{GlContext, GlWindow},
+  display::Display, error::Error, gl::types::*,
+  glutin::{
+    dpi::{LogicalSize, PhysicalSize}, GlContext, GlWindow,
+  },
   shader_cache::ShaderCache, speaker::Speaker,
 };

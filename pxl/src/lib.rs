@@ -172,14 +172,14 @@ pub trait Program: 'static {
   where
     Self: Sized;
 
-  /// Return the desired width and height of pixel surface
+  /// Return the desired resolution of the pixel surface.
   ///
   /// Will be called immediately before calling `render()`.
   /// Determines the length of the pixel slice passed to
   /// `render()`. If (256, 256) is returned, the pixel
   /// slice passed to `render()` will contain 256 * 256,
   /// elements.
-  fn dimensions(&self) -> (usize, usize);
+  fn resolution(&self) -> (usize, usize);
 
   /// Return the vertex shader to be used in the runtime's
   /// rendering pipeline
@@ -241,8 +241,8 @@ pub trait Program: 'static {
   ///
   /// Called by the runtime whenever the display is ready to present a new frame
   ///
-  /// WIDTH  — first element of the tuple returned by `dimensions()`
-  /// HEIGHT — second element of the tuple returned by `dimensions()`
+  /// WIDTH  — first element of the tuple returned by `resolution()`
+  /// HEIGHT — second element of the tuple returned by `resolution()`
   ///
   /// * `pixels` — a slice of pixels with `WIDTH * HEIGHT` elements
   ///              `pixels[x + y * WIDTH]` is the `x`th pixel in the
@@ -290,8 +290,8 @@ pub trait Program: 'static {
 ///     AwesomeProgram{}
 ///   }
 ///
-///   // Set the dimensions of the window
-///   fn dimensions(&self) -> (usize, usize) {
+///   // Set the resolution of the pixel surface
+///   fn resolution(&self) -> (usize, usize) {
 ///     (256, 256)
 ///   }
 /// }
